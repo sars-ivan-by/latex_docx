@@ -1,0 +1,166 @@
+"""DOCX paragraph diff and markdown report."""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import List, Optional, Union
+
+import docx
+
+from .constants import DEFAULT_DIFF_REPORT
+from .util import ensure_out_prefix
+
+def _docx_para_texts(path: Union[str, Path]) -> List[str]:
+    """Non-empty paragraph texts; strip so formatting-only blanks don't shift indices."""
+    doc = docx.Document(str(path))
+    return [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
+
+
+
+def _norm_for_match(text: str) -> str:
+    """Normalize for fuzzy matching: whitespace, dashes, NBSP."""
+    t = text.replace("\u00a0", " ").replace("–", "-").replace("—", "-").replace("−", "-")
+    t = re.sub(r"\s+", " ", t).strip().casefold()
+    return t
+
+
+
+def diff_docx_paragraphs(base_docx: Union[str, Path], edited_docx: Union[str, Path]) -> List[dict]:
+    """Diff DOCX by content alignment (SequenceMatcher), not by paragraph index.
+
+    Index-based diff breaks when one extra/missing paragraph shifts the rest of
+    the document — almost everything looks changed. Here paragraphs are matched
+    by text similarity so an abstract-only edit stays one change.
+    """
+    from difflib import SequenceMatcher
+
+    base = _docx_para_texts(base_docx)
+    edited = _docx_para_texts(edited_docx)
+    base_n = [_norm_for_match(t) for t in base]
+    edited_n = [_norm_for_match(t) for t in edited]
+
+    sm = SequenceMatcher(a=base_n, b=edited_n, autojunk=False)
+    changes: List[dict] = []
+
+    def emit_replace(bi: int, bj: int, ei: int, ej: int) -> None:
+        b_chunk, e_chunk = base[bi:bj], edited[ei:ej]
+        b_n, e_n = base_n[bi:bj], edited_n[ei:ej]
+        # Align inside the replace hunk so 1:1 edits stay paired
+        sub = SequenceMatcher(a=b_n, b=e_n, autojunk=False)
+        for stag, si1, si2, sj1, sj2 in sub.get_opcodes():
+            if stag == "equal":
+                continue
+            if stag == "replace" and (si2 - si1) == (sj2 - sj1):
+                for k in range(si2 - si1):
+                    changes.append(
+                        {
+                            "kind": "changed",
+                            "base_index": bi + si1 + k,
+                            "edited_index": ei + sj1 + k,
+                            "base": b_chunk[si1 + k],
+                            "edited": e_chunk[sj1 + k],
+                        }
+                    )
+            else:
+                for k in range(si1, si2):
+                    changes.append(
+                        {
+                            "kind": "removed",
+                            "base_index": bi + k,
+                            "edited_index": None,
+                            "base": b_chunk[k],
+                            "edited": "",
+                        }
+                    )
+                for k in range(sj1, sj2):
+                    changes.append(
+                        {
+                            "kind": "added",
+                            "base_index": None,
+                            "edited_index": ei + k,
+                            "base": "",
+                            "edited": e_chunk[k],
+                        }
+                    )
+
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "replace":
+            emit_replace(i1, i2, j1, j2)
+        elif tag == "delete":
+            for k in range(i1, i2):
+                changes.append(
+                    {
+                        "kind": "removed",
+                        "base_index": k,
+                        "edited_index": None,
+                        "base": base[k],
+                        "edited": "",
+                    }
+                )
+        elif tag == "insert":
+            for k in range(j1, j2):
+                changes.append(
+                    {
+                        "kind": "added",
+                        "base_index": None,
+                        "edited_index": k,
+                        "base": "",
+                        "edited": edited[k],
+                    }
+                )
+    return changes
+
+
+
+def write_docx_diff_report(
+    base_docx: Union[str, Path],
+    edited_docx: Union[str, Path],
+    report_path: Optional[Union[str, Path]] = None,
+) -> Path:
+    changes = diff_docx_paragraphs(base_docx, edited_docx)
+    report_path = ensure_out_prefix(report_path) if report_path else DEFAULT_DIFF_REPORT
+    kind_ru = {"changed": "изменено", "removed": "удалено", "added": "добавлено"}
+    lines = [
+        f"# DOCX diff: `{Path(edited_docx).name}` vs `{Path(base_docx).name}`",
+        "",
+        f"Изменений: **{len(changes)}** "
+        f"(сопоставление по содержимому, пустые абзацы игнорируются).",
+        "",
+        "Полный автоимпорт DOCX→TeX ненадёжен (формулы OMML, таблицы, макросы).",
+        "Ниже — реальные отличия; правки переносите в `.tex` вручную.",
+        "",
+        "Важно: `base` должен быть свежей конвертацией того же `.tex` "
+        "(`make convert`), а `edited` — его копия после правок в Word. "
+        "Сравнение со старым docx другого формата даст шум по авторам/формулам.",
+        "",
+    ]
+    for n, ch in enumerate(changes, 1):
+        kind = ch.get("kind", "changed")
+        bi, ei = ch.get("base_index"), ch.get("edited_index")
+        loc = []
+        if bi is not None:
+            loc.append(f"base¶{bi}")
+        if ei is not None:
+            loc.append(f"edited¶{ei}")
+        lines.append(f"## {n}. {kind_ru.get(kind, kind)} ({', '.join(loc) or '—'})")
+        lines.append("")
+        if kind in ("changed", "removed"):
+            lines.append("**было:**")
+            lines.append("")
+            lines.append(ch["base"] or "_(пусто)_")
+            lines.append("")
+        if kind in ("changed", "added"):
+            lines.append("**стало:**")
+            lines.append("")
+            lines.append(ch["edited"] or "_(пусто)_")
+            lines.append("")
+    if not changes:
+        lines.append("_Отличий нет._")
+        lines.append("")
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+    return report_path
+
+
+

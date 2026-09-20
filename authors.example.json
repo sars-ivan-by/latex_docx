@@ -1,0 +1,36 @@
+{
+  "authors": [
+    {
+      "id": "alice",
+      "ru_full": "Иванова Алиса Петровна",
+      "ru_short": "А. П. Иванова",
+      "en_short": "A. P. Ivanova",
+      "degree_ru": "кандидат технических наук",
+      "position_ru": "доцент",
+      "org_ids": ["uni"],
+      "email": "alice@example.com",
+      "info_ru": "Иванова Алиса Петровна — кандидат технических наук, доцент, Example University; e-mail: alice@example.com."
+    },
+    {
+      "id": "bob",
+      "ru_full": "Петров Борис Сергеевич",
+      "ru_short": "Б. С. Петров",
+      "en_short": "B. S. Petrov",
+      "degree_ru": "аспирант",
+      "position_ru": "ассистент",
+      "org_ids": ["uni", "lab"],
+      "email": "bob@example.com",
+      "info_ru": "Петров Борис Сергеевич — аспирант, ассистент, Example University / Example Lab; e-mail: bob@example.com."
+    }
+  ],
+  "organizations": {
+    "uni": {
+      "ru": "Example University, Москва, Россия",
+      "en": "Example University, Moscow, Russia"
+    },
+    "lab": {
+      "ru": "Example Lab, Москва, Россия",
+      "en": "Example Lab, Moscow, Russia"
+    }
+  }
+}
