@@ -1,0 +1,30 @@
+{
+  "authors": [
+    {
+      "id": "sukach",
+      "ru_full": "Сукач Иван Андреевич",
+      "ru_short": "И. А. Сукач",
+      "en_short": "I. A. Sukach",
+      "org_ids": ["mpei"],
+      "info_ru": "Сукач Иван Андреевич — тестовая запись."
+    },
+    {
+      "id": "merkulov",
+      "ru_full": "Меркулов Андрей Александрович",
+      "ru_short": "А. А. Меркулов",
+      "en_short": "A. A. Merkulov",
+      "org_ids": ["mirea"],
+      "info_ru": "Меркулов Андрей Александрович — тестовая запись."
+    }
+  ],
+  "organizations": {
+    "mpei": {
+      "ru": "Test Org MPEI",
+      "en": "Test Org MPEI EN"
+    },
+    "mirea": {
+      "ru": "Test Org MIREA",
+      "en": "Test Org MIREA EN"
+    }
+  }
+}

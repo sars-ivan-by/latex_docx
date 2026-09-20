@@ -18,6 +18,7 @@ out*
 *.docx
 !tests/**/*.docx
 
-# local author DB (keep example tracked)
-authors.json
+# local author DB (keep example + test fixtures tracked)
+/authors.json
 *.log
+*.egg-info/
