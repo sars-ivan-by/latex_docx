@@ -7,13 +7,62 @@ from typing import List, Optional, Union
 
 import docx
 
-from .constants import DEFAULT_DIFF_REPORT
+from .constants import DEFAULT_DIFF_REPORT, OMML_NS
 from .util import ensure_out_prefix
 
+
+def _omml_texts(element) -> List[str]:
+    """Collect visible text from OMML (m:t) under a paragraph/table cell element."""
+    texts: List[str] = []
+    for node in element.iter(f"{{{OMML_NS}}}t"):
+        if node.text:
+            texts.append(node.text)
+    return texts
+
+
+def _para_visible_text(p) -> str:
+    """Paragraph text including OMML math (p.text alone often yields only '(1)')."""
+    plain = (p.text or "").strip()
+    omml_parts = _omml_texts(p._p)
+    if not omml_parts:
+        return plain
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for t in omml_parts:
+        if t not in seen:
+            seen.add(t)
+            unique.append(t)
+    math_blob = "".join(unique)
+    if not plain:
+        return math_blob
+    if math_blob and math_blob not in plain:
+        # Numbered eq paragraphs: tabs + (N) in plain, formula in OMML
+        return f"{math_blob} {plain}".strip()
+    return plain
+
+
 def _docx_para_texts(path: Union[str, Path]) -> List[str]:
-    """Non-empty paragraph texts; strip so formatting-only blanks don't shift indices."""
+    """Non-empty paragraph (+ table cell) texts; include OMML content."""
     doc = docx.Document(str(path))
-    return [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
+    out: List[str] = []
+    for p in doc.paragraphs:
+        t = _para_visible_text(p)
+        if t:
+            out.append(t)
+    # Equations rendered as borderless tables also need coverage
+    for table in doc.tables:
+        for row in table.rows:
+            cell_texts = []
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    t = _para_visible_text(p)
+                    if t:
+                        cell_texts.append(t)
+            joined = " | ".join(cell_texts).strip()
+            if joined:
+                out.append(joined)
+    return out
 
 
 
@@ -161,6 +210,3 @@ def write_docx_diff_report(
         lines.append("")
     report_path.write_text("\n".join(lines), encoding="utf-8")
     return report_path
-
-
-

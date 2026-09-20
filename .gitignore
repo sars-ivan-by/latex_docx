@@ -17,6 +17,7 @@ out*
 !authors.example.json
 *.docx
 !tests/**/*.docx
+*_p1_*.png
 
 # local author DB (keep example + test fixtures tracked)
 /authors.json

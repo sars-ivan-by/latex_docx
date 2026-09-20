@@ -1,7 +1,9 @@
 """LaTeX math → OMML / plaintext."""
 from __future__ import annotations
 
+import logging
 import re
+import warnings
 from typing import Optional
 
 from docx.oxml import parse_xml
@@ -10,6 +12,8 @@ from .constants import GREEK, MATH_OPS, OMML_NS, _HAS_OMML
 from .authors import to_superscript
 from .models import Equation, Run
 from .util import _safe_balanced
+
+logger = logging.getLogger(__name__)
 
 try:
     import latex2mathml.converter as _latex2mathml
@@ -55,6 +59,8 @@ def _prep_latex_math(latex: str) -> str:
     s = s.replace("\\\\", " ")
     s = s.replace("\0R\0", "\\\\").replace("\0A\0", "&")
     s = s.replace(r"\!", "")
+    # \bmod → spaced operatorname so OMML doesn't glue "amodb"
+    s = re.sub(r"\\bmod\b", r"\\operatorname{mod}", s)
     # keep \_ as-is for latex2mathml (plain _ inside \mathrm becomes a subscript)
     # function names: thin space before argument so Word doesn't glue ln+a_k
     s = re.sub(
@@ -91,12 +97,22 @@ def _fix_omml_radicals(omml: str) -> str:
 
 
 def _unwrap_omml_boxes(omml: str) -> str:
-    """mathml2omml wraps almost everything in m:box — Word then shifts baseline."""
+    """mathml2omml wraps almost everything in m:box — Word then shifts baseline.
+
+    Also unwrap boxes that carry boxPr (mathml2omml often emits those).
+    """
     prev = None
     while prev != omml:
         prev = omml
         omml = re.sub(
-            r"<m:box>\s*<m:e>(.*?)</m:e>\s*</m:box>",
+            r"<m:box>(?:\s*<m:boxPr\b[^>]*>.*?</m:boxPr>)?\s*<m:e>(.*?)</m:e>\s*</m:box>",
+            r"\1",
+            omml,
+            flags=re.DOTALL,
+        )
+        # Self-closing / empty boxPr variant
+        omml = re.sub(
+            r"<m:box>\s*<m:boxPr\b[^/]*/>\s*<m:e>(.*?)</m:e>\s*</m:box>",
             r"\1",
             omml,
             flags=re.DOTALL,
@@ -115,7 +131,10 @@ def latex_to_omml_element(latex: str, display: bool = False):
     try:
         mml = _latex2mathml.convert(src, display="block" if display else "inline")
         omml = _mathml2omml(mml)
-    except Exception:
+    except Exception as exc:
+        msg = f"latex2mathml/mathml2omml failed for math {src!r}: {exc}"
+        logger.warning(msg)
+        warnings.warn(msg, stacklevel=2)
         return None
     if not omml or "<m:oMath" not in omml:
         return None
@@ -136,7 +155,10 @@ def latex_to_omml_element(latex: str, display: bool = False):
                 xml = f'<m:oMathPara xmlns:m="{OMML_NS}"><m:oMath>{omml}</m:oMath></m:oMathPara>'
             return parse_xml(xml)
         return parse_xml(omml)
-    except Exception:
+    except Exception as exc:
+        msg = f"OMML XML parse failed for math {src!r}: {exc}"
+        logger.warning(msg)
+        warnings.warn(msg, stacklevel=2)
         return None
 
 
@@ -215,7 +237,11 @@ def latex_math_to_text(math: str) -> str:
         # (?![A-Za-z]) — so \tau_k matches (\b fails before _)
         s = re.sub(rf"\\{name}(?![A-Za-z])", sym, s)
     for name, sym in MATH_OPS.items():
-        s = re.sub(rf"\\{name}(?![A-Za-z])", sym, s)
+        if name in ("bmod", "mod"):
+            # Binary mod needs surrounding spaces in flat text: a mod b
+            s = re.sub(rf"\\{name}(?![A-Za-z])", f" {sym} ", s)
+        else:
+            s = re.sub(rf"\\{name}(?![A-Za-z])", sym, s)
 
     while True:
         m = re.search(r"\\overline\s*\{", s)

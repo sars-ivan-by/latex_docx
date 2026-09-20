@@ -70,7 +70,9 @@ pytest
 
 ## Ограничения
 
-Парсер не тянет `\input`, BibTeX, `longtable`, PDF-рисунки и часть OMML-краёв. Актуальный бэклог: [`troubles.md`](troubles.md).
+Парсер покрывает типичные статьи (equation/align, figure/subfigure, tabular/tabularx/longtable,
+thebibliography и `.bbl`). Полный автоимпорт DOCX→TeX по-прежнему ненадёжен — используйте
+`--diff-docx` и переносите правки в `.tex` вручную. Актуальный бэклог: [`troubles.md`](troubles.md).
 
 ## Лицензия
 

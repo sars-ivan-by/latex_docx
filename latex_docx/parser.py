@@ -9,9 +9,9 @@ from .inline import (
     extract_caption,
     extract_includegraphics,
     parse_author_block,
-    parse_bibliography,
     parse_inline,
     parse_tabular,
+    resolve_bibliography,
     runs_to_plain,
 )
 from .math_omml import make_equation
@@ -27,6 +27,7 @@ from .models import (
     TableBlock,
 )
 from .util import (
+    expand_inputs,
     extract_command_arg,
     extract_environment,
     find_balanced,
@@ -37,7 +38,8 @@ class LatexParser:
     def __init__(self, tex_path: Path):
         self.path = tex_path
         self.base = tex_path.parent
-        self.tex = strip_comments(tex_path.read_text(encoding="utf-8"))
+        raw = strip_comments(tex_path.read_text(encoding="utf-8"))
+        self.tex = expand_inputs(raw, self.base)
         self.cite_map: dict = {}
         self.ref_labels: dict = {}
         self.fig_n = self.tab_n = self.eq_n = 0
@@ -45,8 +47,9 @@ class LatexParser:
 
     def parse(self) -> Paper:
         paper = Paper()
-        refs, cite_map = parse_bibliography(self.tex)
+        refs, cite_map = resolve_bibliography(self.tex, self.path)
         paper.references = refs
+        paper.cite_map = cite_map
         self.cite_map = cite_map
 
         title = extract_command_arg(self.tex, "title")
@@ -65,6 +68,10 @@ class LatexParser:
         bib = extract_environment(body, "thebibliography")
         if bib:
             body = body[: bib[1]] + body[bib[2] :]
+        # Drop \\bibliography / biblatex commands from body walk
+        body = re.sub(r"\\bibliography\s*\{[^}]*\}", "", body)
+        body = re.sub(r"\\addbibresource\s*\{[^}]*\}", "", body)
+        body = re.sub(r"\\printbibliography\b(?:\[[^\]]*\])?", "", body)
 
         body = re.sub(r"\\maketitle\b", "", body)
         body = re.sub(r"\\tableofcontents\b", "", body)
@@ -204,12 +211,7 @@ class LatexParser:
             return
 
         if name == "figure":
-            self.fig_n += 1
-            paths = extract_includegraphics(env_body, self.base)
-            cap = extract_caption(env_body)
-            for lab in re.findall(r"\\label\{([^}]+)\}", env_body):
-                self.ref_labels[lab] = str(self.fig_n)
-            paper.body.append(Figure(paths=paths, caption=cap, number=self.fig_n))
+            self._handle_figure(env_body, paper)
             return
 
         if name == "table":
@@ -217,9 +219,15 @@ class LatexParser:
             cap = extract_caption(env_body)
             for lab in re.findall(r"\\label\{([^}]+)\}", env_body):
                 self.ref_labels[lab] = str(self.tab_n)
-            tab = extract_environment(env_body, "tabular")
-            rows = parse_tabular(tab[0]) if tab else []
+            rows = self._extract_table_rows(env_body)
             paper.body.append(TableBlock(rows=rows, caption=cap, number=self.tab_n))
+            return
+
+        # Standalone tabular* / longtable outside table env
+        if name in ("tabular", "tabular*", "tabularx", "longtable"):
+            self.tab_n += 1
+            rows = parse_tabular(env_body, self.cite_map)
+            paper.body.append(TableBlock(rows=rows, caption="", number=self.tab_n))
             return
 
         if name in ("itemize", "enumerate"):
@@ -253,6 +261,57 @@ class LatexParser:
         cleaned = re.sub(r"\\begin\{[^}]+\}|\\end\{[^}]+\}", "", env_body).strip()
         if cleaned:
             self._handle_paragraph(cleaned, paper)
+
+    def _extract_table_rows(self, env_body: str):
+        for tab_name in ("tabularx", "longtable", "tabular*", "tabular"):
+            tab = extract_environment(env_body, tab_name)
+            if tab:
+                return parse_tabular(tab[0], self.cite_map)
+        return []
+
+    def _handle_figure(self, env_body: str, paper: Paper):
+        """One figure number for the environment; subfigure → (a)/(b) panels."""
+        self.fig_n += 1
+        fig_num = self.fig_n
+
+        subfigs = list(re.finditer(r"\\begin\{subfigure\}", env_body))
+        if subfigs:
+            letter_ord = 0
+            for m in subfigs:
+                env = extract_environment(env_body, "subfigure", m.start())
+                if not env:
+                    continue
+                sub_body, _, _ = env
+                letter_ord += 1
+                letter = chr(ord("a") + letter_ord - 1)
+                paths = extract_includegraphics(sub_body, self.base)
+                cap = extract_caption(sub_body)
+                cap = f"({letter}) {cap}".strip() if cap else f"({letter})"
+                for lab in re.findall(r"\\label\{([^}]+)\}", sub_body):
+                    self.ref_labels[lab] = f"{fig_num}{letter}"
+                if paths:
+                    paper.body.append(Figure(paths=paths, caption=cap, number=fig_num))
+            # Parent caption outside subfigures
+            stripped = env_body
+            while True:
+                env = extract_environment(stripped, "subfigure")
+                if not env:
+                    break
+                _, a, b = env
+                stripped = stripped[:a] + stripped[b:]
+            parent_cap = extract_caption(stripped)
+            for lab in re.findall(r"\\label\{([^}]+)\}", stripped):
+                self.ref_labels[lab] = str(fig_num)
+            if parent_cap:
+                paper.body.append(Figure(paths=[], caption=parent_cap, number=fig_num))
+            return
+
+        paths = extract_includegraphics(env_body, self.base)
+        cap = extract_caption(env_body)
+        for lab in re.findall(r"\\label\{([^}]+)\}", env_body):
+            self.ref_labels[lab] = str(fig_num)
+        # Several \\includegraphics → one number, all images under one caption
+        paper.body.append(Figure(paths=paths, caption=cap, number=fig_num))
 
     def _handle_paragraph(self, chunk: str, paper: Paper):
         # Drop standalone labels / leftover preamble-ish commands
@@ -369,14 +428,15 @@ class LatexParser:
             elif isinstance(block, ListBlock):
                 for item in block.items:
                     fix_runs(item)
+            elif isinstance(block, TableBlock):
+                for row in block.rows:
+                    for cell in row:
+                        fix_runs(cell)
+                if block.caption:
+                    for key, num in sorted(labels.items(), key=lambda kv: -len(kv[0])):
+                        if key in block.caption:
+                            block.caption = block.caption.replace(key, num)
             elif isinstance(block, Figure) and block.caption:
                 for key, num in sorted(labels.items(), key=lambda kv: -len(kv[0])):
                     if key in block.caption:
                         block.caption = block.caption.replace(key, num)
-            elif isinstance(block, TableBlock) and block.caption:
-                for key, num in sorted(labels.items(), key=lambda kv: -len(kv[0])):
-                    if key in block.caption:
-                        block.caption = block.caption.replace(key, num)
-
-
-

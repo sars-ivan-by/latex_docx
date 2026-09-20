@@ -108,3 +108,191 @@ def test_run_font_sets_rFonts_ascii_hansi():
     assert r_fonts is not None
     assert r_fonts.get(qn("w:ascii")) == FONT
     assert r_fonts.get(qn("w:hAnsi")) == FONT
+
+
+def test_textbf_preserves_inner_math():
+    runs = parse_inline(r"\textbf{hello $x^2$ world}")
+    math_runs = [r for r in runs if r.math]
+    assert len(math_runs) == 1
+    assert math_runs[0].math == "x^2"
+    assert all(r.bold for r in runs)
+
+
+def test_tabular_cells_keep_math_runs():
+    from latex_docx.inline import parse_tabular
+
+    rows = parse_tabular(r"{cc} a & $x^2$ \\ b & c")
+    assert rows[0][1][0].math == "x^2"
+
+
+def test_booktabs_multicolumn():
+    from latex_docx.inline import parse_tabular
+
+    rows = parse_tabular(
+        r"""{lcc}
+\toprule
+A & \multicolumn{2}{c}{Head} \\
+\midrule
+1 & $a$ & b \\
+\bottomrule
+"""
+    )
+    assert len(rows) == 2
+    assert any(r.math == "a" for r in rows[1][1])
+
+
+def test_bmod_spacing_in_flat_text():
+    t = latex_math_to_text(r"a \bmod b")
+    assert "mod" in t
+    assert t.index("a") < t.index("mod") < t.index("b")
+
+
+def test_unwrap_omml_boxes_with_boxpr():
+    from latex_docx.math_omml import _unwrap_omml_boxes
+
+    xml = (
+        "<m:box><m:boxPr><m:aln/></m:boxPr>"
+        "<m:e><m:r><m:t>x</m:t></m:r></m:e></m:box>"
+    )
+    out = _unwrap_omml_boxes(xml)
+    assert "m:box" not in out
+    assert "x" in out
+
+
+def test_vspace_unbalanced_does_not_raise():
+    runs = parse_inline(r"before \vspace{1em after")
+    assert runs  # no exception
+
+
+def test_expand_input(tmp_path: Path):
+    (tmp_path / "child.tex").write_text("CHILDTEXT", encoding="utf-8")
+    main = tmp_path / "main.tex"
+    main.write_text(
+        r"""
+\documentclass{article}
+\begin{document}
+\input{child}
+\end{document}
+""",
+        encoding="utf-8",
+    )
+    paper = LatexParser(main).parse()
+    texts = [
+        "".join(r.text for r in b.runs) for b in paper.body if isinstance(b, Para)
+    ]
+    assert any("CHILDTEXT" in t for t in texts)
+
+
+def test_bbl_bibliography(tmp_path: Path):
+    tex = tmp_path / "paper.tex"
+    tex.write_text(
+        r"""
+\documentclass{article}
+\begin{document}
+Cite \cite{abc}.
+\bibliography{refs}
+\end{document}
+""",
+        encoding="utf-8",
+    )
+    (tmp_path / "paper.bbl").write_text(
+        r"""
+\begin{thebibliography}{1}
+\bibitem{abc} Author. Title. 2020.
+\end{thebibliography}
+""",
+        encoding="utf-8",
+    )
+    paper = LatexParser(tex).parse()
+    assert paper.cite_map["abc"] == 1
+    assert paper.references[0].startswith("1. Author")
+    assert "thebibliography" not in paper.references[0]
+
+
+def test_cite_in_abstract_uses_cite_map(tmp_path: Path):
+    tex = tmp_path / "a.tex"
+    tex.write_text(
+        r"""
+\documentclass{article}
+\begin{document}
+\begin{abstract}
+See \cite{foo}.
+\end{abstract}
+\begin{thebibliography}{1}
+\bibitem{foo} Foo.
+\end{thebibliography}
+\end{document}
+""",
+        encoding="utf-8",
+    )
+    paper = LatexParser(tex).parse()
+    runs = parse_inline(paper.abstract_ru_tex, paper.cite_map)
+    assert any("[1]" in (r.text or "") for r in runs)
+
+
+def test_tall_numbered_equation_uses_table():
+    from latex_docx.models import Equation
+
+    b = DocxBuilder()
+    b.add_equation(
+        Equation(
+            latex=r"\begin{cases} a & b \\ c & d \end{cases}",
+            number=1,
+            text="cases",
+        )
+    )
+    assert len(b.doc.tables) == 1
+
+
+def test_diff_sees_formula_edits(tmp_path: Path):
+    from latex_docx.diff import diff_docx_paragraphs
+    from latex_docx.math_omml import make_equation
+
+    b1 = DocxBuilder()
+    b1.add_equation(make_equation("x=1", number=1))
+    p1 = tmp_path / "a.docx"
+    b1.doc.save(str(p1))
+    b2 = DocxBuilder()
+    b2.add_equation(make_equation("x=2", number=1))
+    p2 = tmp_path / "b.docx"
+    b2.doc.save(str(p2))
+    changes = diff_docx_paragraphs(p1, p2)
+    assert changes
+    assert "x=1" in changes[0]["base"]
+    assert "x=2" in changes[0]["edited"]
+
+
+def test_resolve_by_agent_env(monkeypatch):
+    from latex_docx.util import resolve_by
+
+    monkeypatch.delenv("LATEX_DOCX_BY", raising=False)
+    monkeypatch.setenv("CURSOR_AGENT", "1")
+    assert resolve_by() == "agent"
+    assert resolve_by("user") == "user"
+
+
+def test_multi_includegraphics_one_number(tmp_path: Path):
+    tex = tmp_path / "f.tex"
+    # Missing image files are fine — we check numbering
+    tex.write_text(
+        r"""
+\documentclass{article}
+\begin{document}
+\begin{figure}
+\includegraphics{a.png}
+\includegraphics{b.png}
+\caption{Two panels}
+\label{fig:two}
+\end{figure}
+See \ref{fig:two}.
+\end{document}
+""",
+        encoding="utf-8",
+    )
+    paper = LatexParser(tex).parse()
+    from latex_docx.models import Figure
+
+    figs = [b for b in paper.body if isinstance(b, Figure)]
+    assert len(figs) == 1
+    assert figs[0].number == 1
+    assert len(figs[0].paths) == 2

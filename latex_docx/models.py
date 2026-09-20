@@ -54,7 +54,8 @@ class Figure:
 
 @dataclass
 class TableBlock:
-    rows: List[List[str]]
+    # Each cell is a list of Runs (may include OMML math)
+    rows: List[List[List[Run]]]
     caption: str = ""
     number: Optional[int] = None
 
@@ -86,3 +87,4 @@ class Paper:
     body: List[Block] = field(default_factory=list)
     references: List[str] = field(default_factory=list)
     authors_info: List[str] = field(default_factory=list)
+    cite_map: dict = field(default_factory=dict)  # bib key → number for \cite

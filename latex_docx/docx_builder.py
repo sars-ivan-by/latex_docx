@@ -7,17 +7,20 @@ from typing import List, Optional
 import docx
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 from docx.shared import Inches, Pt, RGBColor
 
 from .constants import (
     BODY_PT,
     FIG_WIDTH,
+    FIRST_INDENT,
     FONT,
     MARGIN,
+    OMML_NS,
     PAGE_H,
     PAGE_W,
+    TEMPLATES,
     _CENTER_TAB_TWIPS,
     _CONTENT_TWIPS,
     set_run_font,
@@ -35,6 +38,10 @@ from .models import (
     Run,
     TableBlock,
 )
+from .util import rasterize_pdf
+
+_RASTER_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+
 
 class DocxBuilder:
     def __init__(self):
@@ -125,6 +132,23 @@ class DocxBuilder:
                     run.add_break()
         return p
 
+    def _append_runs_to_paragraph(self, p, runs: List[Run], default_size=None):
+        if default_size is None:
+            default_size = BODY_PT
+        for r in runs:
+            if r.math:
+                el = latex_to_omml_element(r.math, display=False)
+                if el is not None:
+                    p._p.append(el)
+                    continue
+            parts = (r.text or "").split("\n")
+            for idx, part in enumerate(parts):
+                run = p.add_run(part)
+                run.bold, run.italic = r.bold, r.italic
+                set_run_font(run, FONT, size_pt=r.size or default_size)
+                if idx < len(parts) - 1:
+                    run.add_break()
+
     def add_runs_para(self, para: Para):
         align_map = {
             "left": WD_ALIGN_PARAGRAPH.LEFT,
@@ -145,33 +169,36 @@ class DocxBuilder:
         p.paragraph_format.space_after = Pt(para.space_after)
         p.paragraph_format.line_spacing = para.line_spacing
         default_size = para.size or BODY_PT
-        for r in para.runs:
-            if r.math:
-                el = latex_to_omml_element(r.math, display=False)
-                if el is not None:
-                    p._p.append(el)
-                    continue
-            parts = (r.text or "").split("\n")
-            for idx, part in enumerate(parts):
-                run = p.add_run(part)
-                run.bold, run.italic = r.bold, r.italic
-                set_run_font(run, FONT, size_pt=r.size or default_size)
-                if idx < len(parts) - 1:
-                    run.add_break()
+        self._append_runs_to_paragraph(p, para.runs, default_size=default_size)
         return p
 
     def add_equation(self, eq: Equation):
-        """Numbered eq: center tab for formula + right tab for (N). Unnumbered: centered."""
+        """Numbered tall equations use a 2-col table (display OMML + number).
+
+        Simple numbered eqs keep tab-stop layout with inline OMML.
+        Unnumbered → centered display OMML.
+        """
+        tall = bool(
+            re.search(
+                r"\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|array|aligned|gathered)\}",
+                eq.latex,
+            )
+            or eq.latex.count(r"\frac") >= 2
+            or r"\\" in eq.latex
+        )
+
+        if eq.number is not None and tall:
+            return self._add_equation_table(eq)
+
         p = self.doc.add_paragraph()
         p.paragraph_format.first_line_indent = Inches(0)
         p.paragraph_format.space_before = Pt(6)
         p.paragraph_format.space_after = Pt(6)
         p.paragraph_format.line_spacing = 1.5
 
-        # Inline OMML so tab stops work (oMathPara ignores centering with a right number)
-        el = latex_to_omml_element(eq.latex, display=False)
-
         if eq.number is not None:
+            # Compact numbered: center tab + right tab
+            el = latex_to_omml_element(eq.latex, display=False)
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
             pPr = p._p.get_or_add_pPr()
             tabs = OxmlElement("w:tabs")
@@ -196,20 +223,67 @@ class DocxBuilder:
             set_run_font(num_run, FONT, size_pt=BODY_PT)
         else:
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if el is not None:
-                # Prefer display math with explicit center when unnumbered
-                el_disp = latex_to_omml_element(eq.latex, display=True)
-                if el_disp is not None:
-                    # Ensure oMathPara is centered
-                    self._center_omath_para(el_disp)
-                    p._p.append(el_disp)
-                else:
+            el_disp = latex_to_omml_element(eq.latex, display=True)
+            if el_disp is not None:
+                self._center_omath_para(el_disp)
+                p._p.append(el_disp)
+            else:
+                el = latex_to_omml_element(eq.latex, display=False)
+                if el is not None:
                     p._p.append(el)
+                else:
+                    run = p.add_run(eq.text or latex_math_to_text(eq.latex))
+                    run.italic = True
+                    set_run_font(run, FONT, size_pt=BODY_PT)
+        return p
+
+    def _add_equation_table(self, eq: Equation):
+        """Display OMML in left cell, (N) right-aligned — preserves tall formula size."""
+        table = self.doc.add_table(rows=1, cols=2)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = True
+        cell_math, cell_num = table.rows[0].cells
+        cell_math.width = Inches(5.8)
+        cell_num.width = Inches(0.9)
+
+        p = cell_math.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.first_line_indent = Inches(0)
+        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_after = Pt(6)
+        el_disp = latex_to_omml_element(eq.latex, display=True)
+        if el_disp is not None:
+            self._center_omath_para(el_disp)
+            p._p.append(el_disp)
+        else:
+            el = latex_to_omml_element(eq.latex, display=False)
+            if el is not None:
+                p._p.append(el)
             else:
                 run = p.add_run(eq.text or latex_math_to_text(eq.latex))
                 run.italic = True
                 set_run_font(run, FONT, size_pt=BODY_PT)
-        return p
+
+        pn = cell_num.paragraphs[0]
+        pn.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        pn.paragraph_format.first_line_indent = Inches(0)
+        num_run = pn.add_run(f"({eq.number})")
+        set_run_font(num_run, FONT, size_pt=BODY_PT)
+
+        # Borderless table
+        for cell in (cell_math, cell_num):
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcPr.append(
+                parse_xml(
+                    r'<w:tcBorders %s>'
+                    r'<w:top w:val="nil"/>'
+                    r'<w:left w:val="nil"/>'
+                    r'<w:bottom w:val="nil"/>'
+                    r'<w:right w:val="nil"/>'
+                    r"</w:tcBorders>" % nsdecls("w")
+                )
+            )
+        return table
 
     @staticmethod
     def _center_omath_para(el) -> None:
@@ -240,11 +314,15 @@ class DocxBuilder:
         set_run_font(run, FONT, size_pt=BODY_PT)
         return p
 
-    def add_table(self, rows: List[List[str]], caption="", number=None):
+    def add_table(self, rows: List[List[List[Run]]], caption="", number=None):
         if not rows:
             return
         ncols = max(len(r) for r in rows)
-        norm = [r + [""] * (ncols - len(r)) for r in rows]
+        # Normalize width
+        norm: List[List[List[Run]]] = []
+        for r in rows:
+            padded = list(r) + [[Run("")]] * (ncols - len(r))
+            norm.append(padded)
         table = self.doc.add_table(rows=len(norm), cols=ncols)
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.autofit = True
@@ -257,17 +335,43 @@ class DocxBuilder:
                 trPr.append(parse_xml(r'<w:tblHeader %s/>' % nsdecls("w")))
             for col_idx, cell in enumerate(row.cells):
                 cell.width = col_w
-                cell.text = norm[row_idx][col_idx]
+                # Clear default empty run, then append OMML-capable runs
                 p = cell.paragraphs[0]
+                p.clear()
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER if col_idx > 0 else WD_ALIGN_PARAGRAPH.LEFT
                 p.paragraph_format.first_line_indent = Inches(0)
                 p.paragraph_format.space_before = Pt(2)
                 p.paragraph_format.space_after = Pt(2)
                 p.paragraph_format.line_spacing = 1.15
-                for run in p.runs:
-                    set_run_font(run, FONT, size_pt=10)
-                    if row_idx == 0:
-                        run.bold = True
+                cell_runs = norm[row_idx][col_idx]
+                # Header row bold
+                if row_idx == 0:
+                    cell_runs = [
+                        Run(
+                            text=r.text,
+                            bold=True,
+                            italic=r.italic,
+                            size=r.size or 10,
+                            math=r.math,
+                            ref_key=r.ref_key,
+                            eqref=r.eqref,
+                        )
+                        for r in cell_runs
+                    ]
+                else:
+                    cell_runs = [
+                        Run(
+                            text=r.text,
+                            bold=r.bold,
+                            italic=r.italic,
+                            size=r.size or 10,
+                            math=r.math,
+                            ref_key=r.ref_key,
+                            eqref=r.eqref,
+                        )
+                        for r in cell_runs
+                    ]
+                self._append_runs_to_paragraph(p, cell_runs, default_size=10)
                 tcPr = cell._tc.get_or_add_tcPr()
                 tcPr.append(parse_xml(
                     r'<w:tcBorders %s>'
@@ -293,9 +397,14 @@ class DocxBuilder:
             p.paragraph_format.space_before = Pt(12)
             p.paragraph_format.space_after = Pt(4)
             run = p.add_run()
-            if path.exists() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"}:
+            insert_path = path
+            if path.exists() and path.suffix.lower() == ".pdf":
+                raster = rasterize_pdf(path)
+                if raster is not None:
+                    insert_path = raster
+            if insert_path.exists() and insert_path.suffix.lower() in _RASTER_EXTS:
                 try:
-                    run.add_picture(str(path), width=FIG_WIDTH)
+                    run.add_picture(str(insert_path), width=FIG_WIDTH)
                 except Exception as e:
                     run.add_text(f"[не удалось вставить: {path.name}: {e}]")
             else:
@@ -315,6 +424,7 @@ class DocxBuilder:
         template = (template or "tdj").lower()
         if template not in TEMPLATES:
             template = "tdj"
+        cite_map = paper.cite_map or {}
 
         if paper.udc:
             self.add_p(f"УДК: {paper.udc}", first_line=0, space_after=12, bold=True)
@@ -352,9 +462,9 @@ class DocxBuilder:
             prefix = [Run("Аннотация. ", bold=False)]
             src = paper.abstract_ru_tex or paper.abstract_ru
             if not src.lower().lstrip().startswith("аннотация"):
-                runs = prefix + parse_inline(src)
+                runs = prefix + parse_inline(src, cite_map)
             else:
-                runs = parse_inline(src)
+                runs = parse_inline(src, cite_map)
             self.add_runs_para(Para(runs=runs, align="justify", first_line=0.49, space_after=6, size=BODY_PT))
 
         if paper.keywords_ru:
@@ -397,9 +507,9 @@ class DocxBuilder:
             if paper.abstract_en or paper.abstract_en_tex:
                 src = paper.abstract_en_tex or paper.abstract_en
                 if not src.lower().lstrip().startswith("abstract"):
-                    runs = [Run("Abstract. ")] + parse_inline(src)
+                    runs = [Run("Abstract. ")] + parse_inline(src, cite_map)
                 else:
-                    runs = parse_inline(src)
+                    runs = parse_inline(src, cite_map)
                 self.add_runs_para(Para(runs=runs, align="justify", first_line=0.49, space_after=6, size=BODY_PT))
 
             if paper.keywords_en:
@@ -435,6 +545,3 @@ class DocxBuilder:
                 self.add_p(info, align=WD_ALIGN_PARAGRAPH.JUSTIFY, first_line=0.49, space_after=6, size=12)
 
         return self.doc
-
-
-

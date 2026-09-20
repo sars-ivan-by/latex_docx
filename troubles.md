@@ -22,32 +22,22 @@
 - [x] `apply_authors_db` не затирает аккуратных авторов из tex
 - [x] шрифт `w:rFonts` ascii/hAnsi (macOS Word)
 - [x] пакет разбит на модули; есть pytest-регрессии
+- [x] `\textbf{…$math$…}` сохраняет OMML (не Unicode)
+- [x] ячейки таблиц — Runs + OMML (не только plain text)
+- [x] высокие numbered display-формулы (`cases`/дроби) → display OMML в 2-col table
+- [x] PDF-рисунки растеризуются через `pdftoppm` / ImageMagick
+- [x] `--diff-docx` читает текст OMML (`m:t`), видит правки формул
+- [x] аннотация при сборке с `paper.cite_map` — `\cite{key}` → `[N]`
+- [x] автодетект `by=agent`: больше env-маркеров + argv/psutil heuristics
+- [x] `\input` / `\include` (рекурсивно, с защитой от циклов)
+- [x] `tabularx` / `longtable` / `\multicolumn` / `\multirow` / booktabs
+- [x] BibTeX / biblatex через соседний `.bbl` (`\bibliography` / `\addbibresource`)
+- [x] несколько `\includegraphics` в одном `figure` — один номер; `subfigure` → (a)/(b)
+- [x] `find_balanced` в `\vspace` через `_safe_balanced` — битый tex не роняет парсер
+- [x] `latex2mathml` / OMML: предупреждения вместо молчаливого `None`
+- [x] `_unwrap_omml_boxes` снимает и `<m:box>` с `boxPr`
+- [x] `\bmod` → spaced `mod` в flat text / `\operatorname{mod}` в prep
 
 ## Открыто
 
-### Критичные / заметные в DOCX
-
-- [ ] `\textbf{…$math$…}` теряет OMML — внутренний math уходит в Unicode
-- [ ] ячейки таблиц — только plain text (без OMML)
-- [ ] display-формулы с номером всегда inline OMML (высокие `cases`/дроби мельче)
-- [ ] PDF-рисунки не вставляются — только raster
-
-### Diff / лог / процесс
-
-- [ ] `--diff-docx` почти не видит правки формул (в `.text` у eq только `(1)`)
-- [ ] аннотация при сборке без `cite_map` — `\cite{key}` может остаться ключом
-- [ ] автодетект `by=agent` хрупкий (env)
-
-### Парсер / покрытие LaTeX
-
-- [ ] нет `\input` / `\include`
-- [ ] нет `tabularx` / `longtable` / `\multicolumn` / `\multirow` / booktabs
-- [ ] `\bibitem` только `thebibliography` — BibTeX / biblatex нет
-- [ ] несколько `\includegraphics` в одном `figure` — один номер на все
-- [ ] `find_balanced` в `\vspace` без try — битый tex может уронить парсер
-
-### OMML / качество формул
-
-- [ ] `latex2mathml` глотает исключения молча
-- [ ] `_unwrap_omml_boxes` не трогает `<m:box>` с `boxPr`
-- [ ] `\bmod` / spacing в плоском виде
+_(пусто)_

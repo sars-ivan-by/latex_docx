@@ -19,15 +19,55 @@ def ensure_out_prefix(path: Union[str, Path]) -> Path:
 
 
 def resolve_by(cli_by: Optional[str] = None) -> str:
-    """Who triggered the operation: agent | user (from flag, env, or default)."""
+    """Who triggered the operation: agent | user (from flag, env, or heuristics)."""
     if cli_by:
         return cli_by.strip().lower()
     env = (os.environ.get("LATEX_DOCX_BY") or "").strip().lower()
     if env in ("agent", "user"):
         return env
-    # Cursor / agent sessions often set one of these
-    if any(os.environ.get(k) for k in ("CURSOR_AGENT", "CURSOR_TRACE_ID", "COMPOSER_SESSION_ID")):
+
+    # Explicit Cursor / agent session markers
+    agent_env_keys = (
+        "CURSOR_AGENT",
+        "CURSOR_AGENT_ID",
+        "CURSOR_TRACE_ID",
+        "CURSOR_SESSION_ID",
+        "COMPOSER_SESSION_ID",
+        "COMPOSER_GENERATION_ID",
+        "CLAUDE_AGENT",
+        "AIDER_AGENT",
+        "AI_AGENT",
+    )
+    if any(os.environ.get(k) for k in agent_env_keys):
         return "agent"
+
+    # Cursor CLI / cloud agent often sets these
+    if (os.environ.get("CURSOR") or "").strip().lower() in ("1", "true", "yes"):
+        return "agent"
+    if os.environ.get("CURSOR_API_KEY") and os.environ.get("CI"):
+        return "agent"
+
+    # Parent process / argv heuristics (best-effort, never raise)
+    try:
+        import sys
+
+        joined = " ".join(sys.argv).lower()
+        if any(tok in joined for tok in ("cursor-agent", "composer", "/agent", "claude-code")):
+            return "agent"
+    except Exception:
+        pass
+
+    try:
+        import psutil  # optional
+
+        proc = psutil.Process(os.getpid())
+        for p in proc.parents():
+            name = (p.name() or "").lower()
+            if any(x in name for x in ("cursor", "composer", "claude", "codex", "agent")):
+                return "agent"
+    except Exception:
+        pass
+
     return "user"
 
 
@@ -143,6 +183,92 @@ def _safe_balanced(s: str, start: int):
         return find_balanced(s, start)
     except ValueError:
         return None
+
+
+
+def expand_inputs(tex: str, base_dir: Path, *, _stack: Optional[set] = None) -> str:
+    """Expand \\input{...} / \\include{...} recursively (cycle-safe)."""
+    if _stack is None:
+        _stack = set()
+
+    def replacer(m: re.Match) -> str:
+        rel = m.group(1).strip()
+        if not rel:
+            return ""
+        cand = Path(rel)
+        if not cand.suffix:
+            cand = cand.with_suffix(".tex")
+        path = (base_dir / cand).resolve()
+        key = str(path)
+        if key in _stack:
+            return f"% cyclic \\input{{{rel}}} skipped\n"
+        if not path.exists():
+            # Try as-is without forcing .tex
+            alt = (base_dir / rel).resolve()
+            if alt.exists():
+                path = alt
+                key = str(path)
+            else:
+                return m.group(0)  # leave unresolved
+        _stack.add(key)
+        try:
+            nested = strip_comments(path.read_text(encoding="utf-8", errors="replace"))
+            return expand_inputs(nested, path.parent, _stack=_stack)
+        finally:
+            _stack.discard(key)
+
+    # \input{file} and \include{file} (not \includegraphics)
+    tex = re.sub(r"\\include\s*\{([^}]+)\}", replacer, tex)
+    tex = re.sub(r"\\input\s*\{([^}]+)\}", replacer, tex)
+    return tex
+
+
+
+def rasterize_pdf(pdf_path: Path, *, dpi: int = 150) -> Optional[Path]:
+    """Render first page of a PDF to PNG. Uses pdftoppm / magick when available."""
+    import shutil
+    import subprocess
+    import tempfile
+
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists() or pdf_path.suffix.lower() != ".pdf":
+        return None
+
+    cache = pdf_path.with_name(pdf_path.stem + f"_p1_{dpi}.png")
+    if cache.exists() and cache.stat().st_mtime >= pdf_path.stat().st_mtime:
+        return cache
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="latex_docx_pdf_"))
+    try:
+        out_base = tmp_dir / "page"
+        pdftoppm = shutil.which("pdftoppm")
+        if pdftoppm:
+            subprocess.run(
+                [pdftoppm, "-png", "-r", str(dpi), "-f", "1", "-l", "1", str(pdf_path), str(out_base)],
+                check=True,
+                capture_output=True,
+            )
+            produced = out_base.with_name(out_base.name + "-1.png")
+            if produced.exists():
+                cache.write_bytes(produced.read_bytes())
+                return cache
+
+        magick = shutil.which("magick") or shutil.which("convert")
+        if magick:
+            tmp_png = tmp_dir / "page.png"
+            subprocess.run(
+                [magick, "-density", str(dpi), f"{pdf_path}[0]", str(tmp_png)],
+                check=True,
+                capture_output=True,
+            )
+            if tmp_png.exists():
+                cache.write_bytes(tmp_png.read_bytes())
+                return cache
+    except Exception:
+        return None
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    return None
 
 
 
