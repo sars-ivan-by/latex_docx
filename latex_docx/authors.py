@@ -46,13 +46,14 @@ def detect_author_ids(paper: "Paper", db: dict) -> List[str]:
 
 
 def _tex_authors_look_careful(paper: "Paper") -> bool:
-    """True if .tex already has affiliation marks / detailed orgs — don't clobber."""
+    """True if .tex already has superscript affiliation markers — don't clobber.
+
+    Long affiliation text alone is not enough: without marks like ¹,² authors.json
+    should still inject numbered orgs so Word shows who belongs where.
+    """
     supers = set("⁰¹²³⁴⁵⁶⁷⁸⁹")
-    if any(c in (paper.authors_ru or "") for c in supers):
-        return True
-    if paper.affiliations_ru and len(paper.affiliations_ru.strip()) > 20:
-        return True
-    return False
+    blob = f"{paper.authors_ru or ''}{paper.affiliations_ru or ''}"
+    return any(c in blob for c in supers)
 
 
 

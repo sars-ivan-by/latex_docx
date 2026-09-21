@@ -317,6 +317,23 @@ class DocxBuilder:
     def add_table(self, rows: List[List[List[Run]]], caption="", number=None):
         if not rows:
             return
+        # TD-J: caption above the table, right-aligned
+        cap = caption
+        if number is not None and cap and not cap.lower().startswith("табл"):
+            cap = f"Таблица {number}. {cap}"
+        elif number is not None and not cap:
+            cap = f"Таблица {number}"
+        if cap:
+            self.add_p(
+                cap,
+                align=WD_ALIGN_PARAGRAPH.RIGHT,
+                first_line=0,
+                space_before=12,
+                space_after=6,
+                bold=True,
+                size=11,
+            )
+
         ncols = max(len(r) for r in rows)
         # Normalize width
         norm: List[List[List[Run]]] = []
@@ -381,14 +398,6 @@ class DocxBuilder:
                     r'<w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
                     r"</w:tcBorders>" % nsdecls("w")
                 ))
-
-        cap = caption
-        if number is not None and cap and not cap.lower().startswith("табл"):
-            cap = f"Таблица {number}. {cap}"
-        elif number is not None and not cap:
-            cap = f"Таблица {number}"
-        if cap:
-            self.add_p(cap, align=WD_ALIGN_PARAGRAPH.LEFT, first_line=0, space_before=6, space_after=12, bold=True, size=11)
 
     def add_figure(self, fig: Figure):
         for path in fig.paths:

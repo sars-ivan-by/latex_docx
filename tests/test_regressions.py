@@ -86,6 +86,23 @@ def test_apply_authors_preserves_careful_tex():
     assert paper.authors_en
 
 
+def test_apply_authors_adds_superscripts_when_tex_has_long_aff_without_marks():
+    """Long affiliation text without ¹… must not block authors.json marks."""
+    paper = Paper(
+        authors_ru="Сукач Иван Андреевич, Меркулов Андрей Александрович",
+        affiliations_ru=(
+            "Аспирант, ассистент\n"
+            "Национальный исследовательский университет «Московский энергетический институт»\n"
+            "Москва, Россия"
+        ),
+    )
+    apply_authors_db(paper, load_authors_db(AUTHORS_DB))
+    assert "¹" in paper.authors_ru
+    assert "²" in paper.authors_ru
+    assert paper.affiliations_ru.startswith("¹")
+    assert "²" in paper.affiliations_ru
+
+
 def test_apply_authors_explicit_overwrites():
     paper = Paper(
         authors_ru="И. А. Сукач¹",
@@ -96,6 +113,20 @@ def test_apply_authors_explicit_overwrites():
     )
     assert "Меркулов" in paper.authors_ru
     assert "Sukach" in paper.authors_en or "I. A." in paper.authors_en
+
+
+def test_table_caption_before_table_right_aligned():
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from latex_docx.models import Run
+
+    b = DocxBuilder()
+    b.add_table([[[Run("a")], [Run("b")]]], caption="Параметры", number=2)
+    body = list(b.doc.element.body)
+    tags = [child.tag.split("}")[-1] for child in body]
+    assert tags.index("p") < tags.index("tbl")
+    cap = b.doc.paragraphs[0]
+    assert cap.text == "Таблица 2. Параметры"
+    assert cap.alignment == WD_ALIGN_PARAGRAPH.RIGHT
 
 
 def test_run_font_sets_rFonts_ascii_hansi():
