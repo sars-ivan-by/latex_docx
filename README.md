@@ -6,6 +6,16 @@
 
 ## Установка
 
+Как библиотека в уже существующее окружение:
+
+```bash
+pip install "latex-docx[omml]"
+# из git, если пакета нет на PyPI:
+pip install "latex-docx[omml] @ git+https://github.com/sars-ivan-by/latex_docx.git"
+```
+
+Разработка этого репозитория:
+
 ```bash
 git clone https://github.com/sars-ivan-by/latex_docx.git
 cd latex_docx
@@ -14,7 +24,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[omml,dev]"
 ```
 
-Без OMML формулы уйдут в plain italic; для нормальных формул Word ставьте extra `omml`.
+Без extra `omml` формулы уйдут в plain italic. В Word для формул ставьте `omml`.
 
 ## Быстрый старт
 
@@ -31,6 +41,9 @@ latex-docx article.tex --authors alice,bob -o out_article.docx
 
 # diff двух DOCX → markdown-отчёт (правки из Word переносите в .tex вручную)
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
+
+# лёгкий Markdown → тот же DOCX (записка, отчёт, письмо)
+latex-docx notes.md -o out_notes.docx
 ```
 
 То же через модуль: `python -m latex_docx …`.
@@ -39,6 +52,7 @@ latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 
 ```bash
 make convert TEX=article.tex BASE=out_base.docx
+make convert-md MD=notes.md BASE=out_notes.docx
 make prepare-edit EDITED=out_edited.docx
 # правки в Word…
 make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md
@@ -52,15 +66,37 @@ make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md
 
 Скопируйте пример и заполните `id`, ФИО, `org_ids`, блок `organizations`. Явный `--authors id1,id2` всегда перезаписывает авторов; без флага JSON не затирает уже аккуратный front matter из `.tex` (надстрочные индексы организаций).
 
-## API
+## Библиотека
+
+Один вызов смотрит на расширение и собирает DOCX. Чеклист TD-J в этом режиме молчит, пока не передать `checklist=True`.
+
+```python
+from latex_docx import convert, diff
+
+convert("notes.md", "out_notes.docx")
+convert("article.tex", "out_article.docx", template="tdj", checklist=True)
+diff("out_base.docx", "out_edited.docx", "out_changes.md")
+```
+
+Чужой проект может скопировать [`examples/wrap.py`](examples/wrap.py) и [`examples/Makefile`](examples/Makefile):
+
+```bash
+cd examples
+make convert SRC=sample.md
+```
+
+Низкий уровень, если нужен разбор без записи файла:
 
 ```python
 from pathlib import Path
-from latex_docx import latex_to_docx, LatexParser
+from latex_docx import latex_to_docx, markdown_to_docx, LatexParser
 
 latex_to_docx("article.tex", "out_article.docx", template="tdj")
+markdown_to_docx("notes.md", "out_notes.docx")
 paper = LatexParser(Path("article.tex")).parse()
 ```
+
+Как агенту выбрать `.tex` или `.md` и что парсер Markdown принимает: [`SKILLS.md`](SKILLS.md).
 
 ## Тесты
 

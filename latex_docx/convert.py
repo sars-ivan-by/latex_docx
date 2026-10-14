@@ -8,6 +8,7 @@ from typing import List, Optional, Sequence, Union
 from .authors import apply_authors_db, load_authors_db
 from .constants import resolve_authors_json
 from .docx_builder import DocxBuilder
+from .md_parser import MarkdownParser
 from .models import Heading, Paper
 from .parser import LatexParser
 from .util import ensure_out_prefix
@@ -64,6 +65,7 @@ def latex_to_docx(
     template: str = "tdj",
     authors_json: Optional[Union[str, Path]] = None,
     author_ids: Optional[Sequence[str]] = None,
+    checklist: bool = True,
 ) -> Path:
     tex_path = Path(tex_path).resolve()
     if not tex_path.exists():
@@ -83,7 +85,7 @@ def latex_to_docx(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     builder.doc.save(str(out_path))
 
-    if template == "tdj":
+    if checklist and template == "tdj":
         notes = tdj_compliance_notes(paper)
         if notes:
             print("TD-J checklist (нужно проверить вручную / дополнить в .tex):")
@@ -91,6 +93,27 @@ def latex_to_docx(
                 print(f"  • {n}")
         else:
             print("TD-J checklist: базовые поля front matter / структура на месте.")
+    return out_path
+
+
+def markdown_to_docx(
+    md_path: Union[str, Path],
+    out_path: Optional[Union[str, Path]] = None,
+) -> Path:
+    """Markdown → DOCX тем же сборщиком, что и LaTeX (шаблон plain, без TD-J шапки)."""
+    md_path = Path(md_path).resolve()
+    if not md_path.exists():
+        raise FileNotFoundError(md_path)
+    out_path = (
+        ensure_out_prefix(out_path)
+        if out_path
+        else Path(f"out_{md_path.stem}.docx")
+    )
+    paper = MarkdownParser(md_path).parse()
+    builder = DocxBuilder()
+    builder.build(paper, template="plain")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    builder.doc.save(str(out_path))
     return out_path
 
 

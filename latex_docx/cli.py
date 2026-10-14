@@ -3,17 +3,20 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Optional, Sequence
 
 from .constants import DEFAULT_OP_LOG, TEMPLATES, _HAS_OMML, resolve_authors_json
-from .convert import latex_to_docx
+from .convert import latex_to_docx, markdown_to_docx
 from .diff import write_docx_diff_report
 from .util import append_op_log, resolve_by
 
 
 def main(argv: Optional[Sequence[str]] = None):
-    parser = argparse.ArgumentParser(description="Convert LaTeX article to TD-J formatted DOCX")
-    parser.add_argument("tex", nargs="?", help="Input .tex file")
+    parser = argparse.ArgumentParser(
+        description="Convert LaTeX or Markdown to DOCX (TD-J layout for .tex, light layout for .md)"
+    )
+    parser.add_argument("tex", nargs="?", help="Input .tex, .md or .markdown file")
     parser.add_argument(
         "-o",
         "--output",
@@ -82,6 +85,21 @@ def main(argv: Optional[Sequence[str]] = None):
 
     if not args.tex:
         parser.error("tex is required unless --diff-docx is used")
+
+    src = Path(args.tex)
+    if src.suffix.lower() in {".md", ".markdown"}:
+        out = markdown_to_docx(args.tex, args.output)
+        print(f"Saved: {out}")
+        if not args.no_log:
+            size = out.stat().st_size if out.exists() else 0
+            append_op_log(
+                "convert-md",
+                f"md={args.tex} → base={out} size={size}B",
+                by=who,
+                log_path=args.log,
+            )
+            print(f"log → {args.log} (by={who})")
+        return
 
     ids = [x.strip() for x in args.authors.split(",")] if args.authors else None
     authors_path = resolve_authors_json(args.authors_json)

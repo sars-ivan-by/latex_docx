@@ -39,6 +39,7 @@
 - [x] `_unwrap_omml_boxes` снимает и `<m:box>` с `boxPr`
 - [x] `\bmod` → spaced `mod` в flat text / `\operatorname{mod}` в prep
 - [x] подпись таблицы: перед таблицей, выравнивание справа (TD-J)
+- [x] лёгкий Markdown → DOCX (тот же DocxBuilder, CLI по расширению `.md`)
 
 ## Открыто
 

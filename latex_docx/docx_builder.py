@@ -145,7 +145,7 @@ class DocxBuilder:
             for idx, part in enumerate(parts):
                 run = p.add_run(part)
                 run.bold, run.italic = r.bold, r.italic
-                set_run_font(run, FONT, size_pt=r.size or default_size)
+                set_run_font(run, r.font or FONT, size_pt=r.size or default_size)
                 if idx < len(parts) - 1:
                     run.add_break()
 
@@ -369,6 +369,7 @@ class DocxBuilder:
                             bold=True,
                             italic=r.italic,
                             size=r.size or 10,
+                            font=r.font,
                             math=r.math,
                             ref_key=r.ref_key,
                             eqref=r.eqref,
@@ -382,6 +383,7 @@ class DocxBuilder:
                             bold=r.bold,
                             italic=r.italic,
                             size=r.size or 10,
+                            font=r.font,
                             math=r.math,
                             ref_key=r.ref_key,
                             eqref=r.eqref,
