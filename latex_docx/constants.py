@@ -31,10 +31,7 @@ DEFAULT_OP_LOG = Path("out_latex_docx.log")
 DEFAULT_DIFF_REPORT = Path("out_changes.md")
 SUPERSCRIPTS = str.maketrans("0123456789+-=()", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾")
 
-# Front-matter layout templates
-# tdj: bilingual journal header. plain and article: one front-matter block.
-# article is the non-journal layout (pair it with lang="en" for English labels).
-TEMPLATES = ("tdj", "plain", "article")
+from .templates import TEMPLATES  # noqa: E402
 
 
 def resolve_authors_json(explicit: Optional[Path | str] = None) -> Path:

@@ -9,7 +9,7 @@ from pptx.util import Inches
 
 from latex_docx import PptxExportError, markdown_to_pptx
 from latex_docx.cli import main
-from latex_docx.pptx_export import parse_slide_markdown
+from latex_docx.pptx_export import list_slide_layouts, parse_slide_markdown
 
 SLIDES = """# Доклад
 Лаборатория
@@ -90,6 +90,61 @@ def test_unknown_layout_names_the_ones_present(tmp_path: Path):
     with pytest.raises(PptxExportError) as exc:
         markdown_to_pptx(md, tmp_path / "x.pptx", template=template, title_layout="Нет такого")
     assert "Title Slide" in str(exc.value)
+
+
+def test_slide_layout_directive_overrides_the_default(tmp_path: Path):
+    md = tmp_path / "talk.md"
+    md.write_text(
+        "::layout Title Only\n\n## Только заголовок\n\nЭтот текст не обязателен.\n",
+        encoding="utf-8",
+    )
+    slides = parse_slide_markdown(md.read_text(encoding="utf-8"), tmp_path)
+    assert slides[0].layout == "Title Only"
+    assert "layout" not in slides[0].lines
+    out = markdown_to_pptx(md, tmp_path / "deck.pptx")
+    prs = Presentation(str(out))
+    assert prs.slides[0].slide_layout.name == "Title Only"
+
+
+def test_pptx_layouts_lists_names(tmp_path: Path, capsys):
+    template = tmp_path / "org.pptx"
+    Presentation().save(template)
+    lines = list_slide_layouts(template)
+    assert any(line.split("\t")[1] == "Title Slide" for line in lines)
+    main(["--pptx-layouts", str(template), "--no-log"])
+    printed = capsys.readouterr().out
+    assert "Title and Content" in printed
+
+
+def test_builtin_design_without_a_template(tmp_path: Path):
+    md = tmp_path / "talk.md"
+    md.write_text(
+        "::font Georgia\n::color 112233\n::background F7F4EF\n::size 4:3\n\n# Доклад\n\nТекст.\n",
+        encoding="utf-8",
+    )
+    out = markdown_to_pptx(md, tmp_path / "deck.pptx")
+    prs = Presentation(str(out))
+    assert prs.slide_width == Inches(10)
+    assert prs.slide_height == Inches(7.5)
+    title = prs.slides[0].shapes.title
+    run = title.text_frame.paragraphs[0].runs[0]
+    assert run.font.name == "Georgia"
+    assert str(run.font.color.rgb) == "112233"
+    assert str(prs.slides[0].background.fill.fore_color.rgb) == "F7F4EF"
+
+
+def test_template_ignores_deck_design(tmp_path: Path, capsys):
+    template = tmp_path / "org.pptx"
+    base = Presentation()
+    base.slide_width = Inches(8)
+    base.save(template)
+    md = tmp_path / "talk.md"
+    md.write_text("::font Georgia\n::size widescreen\n\n# Доклад\n", encoding="utf-8")
+    out = markdown_to_pptx(md, tmp_path / "deck.pptx", template=template)
+    prs = Presentation(str(out))
+    assert prs.slide_width == Inches(8)
+    assert prs.slides[0].shapes.title.text_frame.paragraphs[0].runs[0].font.name != "Georgia"
+    assert "ignored" in capsys.readouterr().err
 
 
 def test_cli_pptx(tmp_path: Path):

@@ -63,7 +63,7 @@ def tdj_compliance_notes(paper: Paper, lang: str = "ru") -> List[str]:
 def latex_to_docx(
     tex_path: Union[str, Path],
     out_path: Optional[Union[str, Path]] = None,
-    template: str = "tdj",
+    template: str = "note",
     authors_json: Optional[Union[str, Path]] = None,
     author_ids: Optional[Sequence[str]] = None,
     checklist: bool = True,
@@ -84,12 +84,12 @@ def latex_to_docx(
     apply_authors_db(paper, load_authors_db(db_path), author_ids=author_ids)
 
     lang = normalize_lang(lang)
-    builder = DocxBuilder(lang=lang, style_template=docx_template)
+    builder = DocxBuilder(lang=lang, style_template=docx_template, template=template)
     builder.build(paper, template=template)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     builder.doc.save(str(out_path))
 
-    if checklist and template == "tdj":
+    if checklist and builder.profile.checklist:
         notes = tdj_compliance_notes(paper, lang=lang)
         print(checklist_header(lang, ok=not notes))
         for n in notes:
@@ -102,8 +102,9 @@ def markdown_to_docx(
     out_path: Optional[Union[str, Path]] = None,
     lang: str = "ru",
     docx_template: Optional[Union[str, Path]] = None,
+    template: str = "note",
 ) -> Path:
-    """Markdown → DOCX with the same builder as LaTeX (plain template, no TD-J front matter)."""
+    """Markdown → DOCX. template picks the page setup (note, letter, memo, report, article)."""
     md_path = Path(md_path).resolve()
     if not md_path.exists():
         raise FileNotFoundError(md_path)
@@ -113,8 +114,8 @@ def markdown_to_docx(
         else Path(f"out_{md_path.stem}.docx")
     )
     paper = MarkdownParser(md_path).parse()
-    builder = DocxBuilder(lang=lang, style_template=docx_template)
-    builder.build(paper, template="plain")
+    builder = DocxBuilder(lang=lang, style_template=docx_template, template=template)
+    builder.build(paper, template=template)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     builder.doc.save(str(out_path))
     return out_path

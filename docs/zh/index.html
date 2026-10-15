@@ -15,11 +15,21 @@
     <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
   </nav>
   <h1>latex-docx</h1>
-  <p class="lede">把科学论文从 LaTeX 转成 Word，把 Markdown 笔记转成同一套 DOCX，或把 Markdown 转成 PowerPoint。PDF 由 Microsoft Word 从这份 DOCX 另存，版式与 Word 一致。</p>
+  <p class="lede">从 Markdown 或 LaTeX 生成 DOCX、PDF 和 PowerPoint。代理选择模板、语言和幻灯片版式。科学论文只是其中一种模板。</p>
 
   <h2>安装</h2>
+  <p>macOS 和 Linux：</p>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> 把公式写成 Word 公式。<code>pptx</code> 用于幻灯片。macOS 和 Windows 上的 PDF 由 Word 生成。Windows 请安装 <code>pip install "latex-docx[win]"</code>。Linux 上由 LibreOffice（<code>soffice</code>）生成 PDF，页面可能与 Word 不同。</p>
+  <h3>Windows</h3>
+  <p>安装 Python 3.9 或更高版本，并勾选 “Add python.exe to PATH”。若要生成 PDF，还需要安装 Microsoft Word。在 PowerShell 中：</p>
+  <pre><code>py -m pip install "latex-docx[omml,pptx,win]"</code></pre>
+  <p>附加组件 <code>win</code> 会安装 <code>pywin32</code>，PDF 由 Word 写出。若 <code>python</code> 已在 <code>PATH</code> 中，在 <code>cmd</code> 里可以把 <code>py</code> 换成 <code>python</code>。</p>
+  <p>从仓库克隆安装：</p>
+  <pre><code>py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -e ".[omml,pptx,win,dev]"</code></pre>
+  <p>若 PowerShell 拒绝运行 <code>Activate.ps1</code>，先执行一次 <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>。在 <code>cmd</code> 中用 <code>.venv\Scripts\activate.bat</code>。</p>
+  <p><code>omml</code> 把公式写成 Word 公式。<code>pptx</code> 用于幻灯片。Linux 上由 LibreOffice（<code>soffice</code>）生成 PDF，页面可能与 Word 不同。</p>
 
   <h2>命令行</h2>
   <pre><code>latex-docx article.tex -o out_article.docx

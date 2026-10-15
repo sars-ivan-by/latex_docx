@@ -21,8 +21,8 @@ def _style_id(paragraph) -> str:
 
 def test_headings_use_outline_styles():
     paper = Paper(body=[Heading("Введение", level=1), Heading("Подраздел", level=2)])
-    builder = DocxBuilder()
-    builder.build(paper, template="plain")
+    builder = DocxBuilder(template="article")
+    builder.build(paper, template="article")
     headings = [p for p in builder.doc.paragraphs if p.text in {"Введение", "Подраздел"}]
     assert [_style_id(p) for p in headings] == ["Heading1", "Heading2"]
     assert headings[0].runs[0].font.name == "Times New Roman"

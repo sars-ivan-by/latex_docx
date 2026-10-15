@@ -27,7 +27,11 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Library wrapper around latex-docx")
     parser.add_argument("source", nargs="?", help="Input .tex or .md")
     parser.add_argument("-o", "--output", help="Output path (out_ is prefixed when missing)")
-    parser.add_argument("--template", default="tdj", choices=("tdj", "plain", "article"))
+    parser.add_argument(
+        "--template",
+        default="note",
+        choices=("note", "letter", "memo", "report", "article", "plain", "tdj"),
+    )
     parser.add_argument("--lang", default="ru", choices=("ru", "en"))
     parser.add_argument("--docx-template", default=None, help="Organization .docx or .dotx")
     parser.add_argument("--authors-json", default=None)

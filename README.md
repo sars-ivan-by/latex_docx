@@ -1,12 +1,14 @@
 # latex-docx
 
-Turn a typical scientific article from LaTeX into Word, a Markdown note into the same DOCX, or Markdown into PowerPoint. PDF is that Word file saved by Microsoft Word, so the page matches the DOCX.
+Build a DOCX, a PDF, or a PowerPoint file from a source an agent or a script can write. The source is Markdown, or LaTeX when the document needs formulas and a bibliography. The program fills a document template. It does not replace the editor: Word and PowerPoint stay the place where a person makes the last pass.
 
-The LaTeX path follows the [TD-J](https://td-j.ru/) journal: Times New Roman 14 pt, margins of about 2 cm, equation numbers on the right, OMML math when the extra is installed.
+An agent controls the result from the source and a few flags: which template, which language, which organization file, and, for slides, which layout. Colors and fonts of a branded file stay in that file.
 
+A scientific article is one option (`--template article`, or `--template tdj` for a bilingual journal header). The default is an ordinary note.
+
+- Agent instructions: [`SKILLS.md`](SKILLS.md)
 - Documentation: [English](https://sars-ivan-by.github.io/latex_docx/en/) · [Русский](https://sars-ivan-by.github.io/latex_docx/ru/) · [中文](https://sars-ivan-by.github.io/latex_docx/zh/)
-- Roadmap: [`ROADMAP.md`](ROADMAP.md) · [English](https://sars-ivan-by.github.io/latex_docx/en/roadmap.html) · [Русский](https://sars-ivan-by.github.io/latex_docx/ru/roadmap.html) · [中文](https://sars-ivan-by.github.io/latex_docx/zh/roadmap.html)
-- Agent notes: [`SKILLS.md`](SKILLS.md)
+- Roadmap: [`ROADMAP.md`](ROADMAP.md)
 
 ## Install
 
@@ -14,13 +16,30 @@ The LaTeX path follows the [TD-J](https://td-j.ru/) journal: Times New Roman 14 
 pip install "latex-docx[omml,pptx]"
 ```
 
-`omml` writes formulas as Word math. Without it they become italic text and the CLI warns. `pptx` is required for slides. PDF on macOS and Windows needs Microsoft Word. On Windows install the extra that pulls in `pywin32`:
+`omml` writes formulas as Word math. Without it they become italic text and the CLI warns. `pptx` is required for slides. PDF on macOS needs Microsoft Word. On Linux, LibreOffice (`soffice`) writes the PDF, and the page can differ from Word.
 
-```bash
-pip install "latex-docx[omml,pptx,win]"
+### Windows
+
+Install Python 3.9 or newer with “Add python.exe to PATH”. PDF also needs Microsoft Word. In PowerShell:
+
+```powershell
+py -m pip install "latex-docx[omml,pptx,win]"
 ```
 
+The `win` extra installs `pywin32`. In `cmd`, use `python` instead of `py` when Python is already on `PATH`.
+
 From a checkout:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -e ".[omml,pptx,win,dev]"
+py -m pytest
+```
+
+If PowerShell refuses `Activate.ps1`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. In `cmd` the activator is `.venv\Scripts\activate.bat`.
+
+### macOS and Linux checkout
 
 ```bash
 git clone https://github.com/sars-ivan-by/latex_docx.git
@@ -34,82 +53,82 @@ pytest
 ## Quick start
 
 ```bash
-latex-docx article.tex -o out_article.docx
-latex-docx article.tex --template article --lang en -o out_article.docx
-latex-docx notes.md -o out_notes.docx --lang en --docx-template org.docx
+latex-docx notes.md -o out_notes.docx
+latex-docx letter.md --template letter --lang en -o out_letter.docx
+latex-docx report.md --template report -o out_report.docx
+latex-docx slides.md -o out_slides.pptx
 latex-docx notes.md -o out_notes.docx --pdf
-latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
 
-`python -m latex_docx` is the same program. A file name without the `out_` prefix receives one (see `.gitignore`).
-
-```bash
-make convert TEX=article.tex BASE=out_base.docx
-make pdf
-make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx
-```
-
-Copy [`examples/wrap.py`](examples/wrap.py) and [`examples/Makefile`](examples/Makefile) into another project.
-
-## Language
-
-`lang` is `ru` or `en`. The default is `ru`.
-
-| | `tdj` (default for `.tex`) | `plain` (Markdown, or `--template plain`) |
-|---|---|---|
-| Front matter | Russian block, then English block. Each block keeps its own labels (`Аннотация` / `Abstract`). | One block. `en` prefers `*_en` fields and falls back to `*_ru`, so a Markdown title still appears. |
-| Shared labels | Follow `lang`: figure, table, references, author block, UDC, missing image. | Same. |
-
-```bash
-latex-docx article.tex --lang en -o out_article.docx
-latex-docx notes.md --lang en -o out_notes.docx
-```
+`python -m latex_docx` is the same program. A file name without the `out_` prefix receives one (see `.gitignore`). Copy [`examples/wrap.py`](examples/wrap.py) into another project and call `convert()`.
 
 ```python
-from latex_docx import convert, diff
+from latex_docx import convert, markdown_to_pptx
 
-convert("notes.md", "out_notes.docx", lang="en")
-convert("article.tex", "out_article.docx", template="tdj", lang="ru", checklist=True)
-diff("out_base.docx", "out_edited.docx", "out_changes.md", lang="ru")
+convert("notes.md", "out_notes.docx", template="note", lang="en")
+convert("letter.md", "out_letter.docx", template="letter")
+convert("slides.md", "out_slides.pptx")
 ```
 
-The TD-J checklist is printed for a `.tex` file on the command line and stays quiet in `convert()` unless `checklist=True`. Its wording follows `lang`. `diff()` writes an English report unless `lang="ru"`. The CLI passes `--lang` through, so a CLI diff is Russian unless you pass `--lang en`.
+`convert` chooses Markdown or LaTeX from the suffix. PDF and PPTX cannot be requested in one call. `diff()` writes an English report unless `lang="ru"`. The CLI passes `--lang` through, so a CLI diff is Russian unless you pass `--lang en`.
 
-## Library
+## What an agent sets
 
-```python
-from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
+| Choice | Where |
+|---|---|
+| Document kind | `--template note\|letter\|memo\|report\|article\|tdj` |
+| Language of labels | `--lang ru\|en` |
+| Organization Word file | `--docx-template org.docx` (styles and page; sample body is dropped) |
+| Slide deck | `--pptx-template org.pptx`, or no file and the built-in layouts |
+| One slide's layout | `::layout Exact Name` after `latex-docx --pptx-layouts` |
+| Look, when there is no deck file | `::font`, `::color RRGGBB`, `::background RRGGBB`, `::size widescreen` |
 
-convert("article.tex", "out_article.docx", template="tdj", authors_json="authors.json")
-convert("notes.md", "out_notes.docx", pdf=True)
-docx_to_pdf("out_notes.docx", "out_notes.pdf")
-markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")
+With an organization `.pptx`, those four `::` lines are ignored. The file already has the look. Full rules for agents: [`SKILLS.md`](SKILLS.md).
+
+## Templates
+
+| Template | Page |
+|---|---|
+| `note` | Default. Calibri 11 pt, left aligned, about 2.5 cm margins. |
+| `letter` | Calibri 12 pt, wider margins, no UDC line and no abstract label. |
+| `memo` | Same idea as a letter, with tighter margins. |
+| `report` | Times New Roman 12 pt, justified, a small first-line indent. |
+| `article` | One front-matter block, Times New Roman 14 pt, justified. The scientific option. |
+| `tdj` | Optional bilingual header (Russian block, then English block) and a journal checklist on the command line. |
+| `plain` | Same page as `note`. Kept for older commands. |
+
+`--docx-template` replaces the page setup with the organization's Word styles. Headings are real Word heading styles either way, so a table of contents can see them.
+
+## Markdown, slides, PDF
+
+Markdown DOCX: the first `#` is the title unless YAML `title:` is set. Headings, bold, italic, code, links, nested lists, task items, footnotes (`[^id]` and `[^id]: text`), GFM tables, images, fenced code, quotes, and `$...$` / `$$...$$` are accepted.
+
+Slides: `---` starts the next slide, `#` is the title slide, `##` is content, `-` is a bullet, `???` is speaker notes. See [`examples/slides.md`](examples/slides.md).
+
+```bash
+latex-docx --pptx-layouts
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
 ```
 
-`convert` chooses LaTeX or Markdown from the suffix. PDF and PPTX cannot be requested in one call.
+PDF on macOS is whatever Word saves via AppleScript; Word is not quit. Windows uses a separate Word instance through `pywin32` and closes that instance. Linux has no Word: `soffice` (LibreOffice) writes the PDF, and the page can differ from Word.
 
-## Styles
-
-`--docx-template org.docx` (or a `.dotx`) keeps the organization's styles, page size, headers, and footers. Text that was already in that file is removed. Section headings use the heading styles from the file (`Heading 1`, `Заголовок 1`, and the same pattern for levels 2–9). Without a template, headings are still real Word heading styles, drawn in Times New Roman 14 pt.
-
-`--template article` prints one front-matter block, the same way `plain` does, and does not run the TD-J checklist. Use it with `--lang en` for an English article.
-
-## Authors, Markdown, slides, PDF
+## Authors and a journal article
 
 `--authors-json`, then `./authors.json`, then the copy in the repo, then `authors.example.json`. `--authors id1,id2` replaces the author block. Without that flag, a careful front matter already in the `.tex` is left as it is.
 
-Markdown DOCX: the first `#` is the centered title unless YAML `title:` is set. Headings, bold, italic, code, links, nested lists, task items, footnotes (`[^id]` plus `[^id]: text`), GFM tables, images, fenced code, quotes, and `$...$` / `$$...$$` are accepted.
+```bash
+latex-docx article.tex --template article --lang en -o out_article.docx
+latex-docx article.tex --template tdj -o out_article.docx
+```
 
-Slides: `---` starts the next slide, `#` is the title slide, `##` is content, `-` is a bullet, `???` is speaker notes. `--pptx-template` keeps size, theme, and layouts and drops slides that were already in the file. See [`examples/slides.md`](examples/slides.md).
-
-PDF on macOS is whatever Word saves via AppleScript; Word is not quit, and the first run may ask for permission to control it. Windows uses a separate Word instance through `pywin32` and closes that instance when the PDF is written. Linux has no Word: `soffice` (LibreOffice) writes the PDF, and the page can differ from Word. Install LibreOffice and keep `soffice` on `PATH`.
+The checklist runs for `tdj` on the command line. In `convert()` it stays quiet unless `checklist=True`.
 
 ## Limits
 
-The parser covers a typical article: `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography`, and a sibling `.bbl`. Do not import a DOCX back into TeX. Use `--diff-docx` and edit the source. Known limits: [`troubles.md`](troubles.md). What comes next: [`ROADMAP.md`](ROADMAP.md).
+LaTeX covers a typical article: `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography`, and a sibling `.bbl`. Do not import a DOCX back into the source. Use `--diff-docx` and edit the Markdown or TeX. Known limits: [`troubles.md`](troubles.md). What comes next: [`ROADMAP.md`](ROADMAP.md).
 
-PyPI package name: `latex-docx`. A GitHub Release on `main` publishes through trusted publishing (`.github/workflows/pypi.yml`, environment `pypi`). Pages are the static files in `docs/`, deployed by `.github/workflows/pages.yml`.
+PyPI package name: `latex-docx`. A GitHub Release publishes through trusted publishing (`.github/workflows/pypi.yml`, environment `pypi`). Pages are the static files in `docs/`.
 
 ## License
 

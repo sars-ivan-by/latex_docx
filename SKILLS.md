@@ -1,20 +1,49 @@
 # Preparing documents with latex-docx
 
-Instructions for an agent. Write the source. The DOCX, PDF, or PPTX is a build product, plus the file a person edits in Word or PowerPoint.
+Instructions for an agent. You write the source and choose the template. The program builds the DOCX, PDF, or PPTX. A person may still open that file in Word or PowerPoint.
 
-A TD-J article is LaTeX. A note, report, letter, or draft is Markdown. A talk is Markdown too, built to PPTX. The DOCX builder uses Times New Roman 14 pt, margins of about 2 cm, line spacing 1.5, a first-line indent, and a centered page number. Pass `lang="ru"` (the default) or `lang="en"`. Template `tdj` still prints the Russian front matter and then the English front matter. Shared labels (figure, table, references) follow `lang`.
+Everyday documents are Markdown: `--template note` (the default), `letter`, `memo`, or `report`. A talk is Markdown built to PPTX. A scientific article is optional: `.tex` with `--template article`, or `--template tdj` when the file needs a bilingual journal header. Pass `lang="ru"` (the default) or `lang="en"`. Shared labels (figure, table, references) follow `lang`.
 
 ## Which source
 
-TD-J article, with formulas, figures, references, and a bilingual header: `.tex`, template `tdj` (the default). Russian header only: `--template plain`.
+`note`, `letter`, `memo`, and `report` are Markdown or LaTeX with `--template`. `letter` and `memo` do not print a UDC line or an abstract label. `report` is justified Times 12 pt. `note` is Calibri 11 pt, left aligned.
 
-A document without the journal header: `.md` or `.markdown`. `--template` does not apply. The builder uses `plain` and does not add UDC, abstracts, or the English block. An English article that is not for TD-J is `.tex` with `--template article --lang en`.
+`article` is one front-matter block in Times 14 pt. `tdj` prints the Russian block and then the English block, and the command line prints the journal checklist. `plain` is the same page as `note`.
 
 Pass `--docx-template org.docx` (or `.dotx`) when the organization already has a Word file. Styles, page setup, headers, and footers come from that file. Sample paragraphs in it are dropped. Headings become Word heading styles either way.
 
 Markdown lists may be indented. A footnote is `[^id]` in the text and `[^id]: the note` on its own line.
 
-A presentation: the same Markdown, with output ending in `.pptx` or with `--pptx`. Pass the organization's deck as `--pptx-template org.pptx` so the size, theme, and layouts match. Sample slides already in that file are dropped. If the layout names are not `Title Slide` and `Title and Content`, pass the exact names with `--title-layout` and `--content-layout`. Install `pip install "latex-docx[pptx]"`.
+A presentation: the same Markdown, with output ending in `.pptx` or with `--pptx`. Pass the organization's deck as `--pptx-template org.pptx` so the size, theme, and layouts match. Sample slides already in that file are dropped. Install `pip install "latex-docx[pptx]"`.
+
+If the organization has a deck, pass it as `--pptx-template`. That file owns colors, fonts, and the slide size. Do not also set `::font`, `::color`, `::background`, or `::size`; those lines are ignored when a template is present. List its layouts with `latex-docx --pptx-layouts org.pptx`.
+
+If there is no organization deck, omit `--pptx-template`. The built-in layouts are available, and the agent sets the look in the Markdown:
+
+```bash
+latex-docx --pptx-layouts
+```
+
+```markdown
+::font Georgia
+::color 1F4E79
+::background F7F4EF
+::size widescreen
+```
+
+`::size` is `widescreen` or `16:9` (13.333 by 7.5 in), `standard` or `4:3` (10 by 7.5 in), or inches such as `13.333x7.5`. `::color` and `::background` are `RRGGBB`. These lines may sit anywhere in the file. They are not slide text.
+
+Each layouts line is `index`, then the layout name, then its placeholders (`TITLE`, `BODY`, `PICTURE`, …). Put a directive on its own line inside a slide to use that name:
+
+```markdown
+::layout Title Only
+
+## Figure
+
+![scheme](fig.png)
+```
+
+The name must match the list, including spaces. Slides without `::layout` use `--title-layout` for a `#` slide and `--content-layout` for the rest. Omit those flags to let the converter pick a title layout and a content layout from the placeholders.
 
 Word edits do not flow back into the source. Run `--diff-docx` and copy the changes into the `.tex` or `.md` yourself.
 

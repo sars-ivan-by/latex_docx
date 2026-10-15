@@ -15,11 +15,21 @@
     <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
   </nav>
   <h1>latex-docx</h1>
-  <p class="lede">Научная статья из LaTeX в Word, заметка из Markdown в тот же DOCX, доклад из Markdown в PowerPoint. PDF сохраняет Microsoft Word из готового DOCX, поэтому страница совпадает с документом.</p>
+  <p class="lede">Сборка DOCX, PDF и PowerPoint из Markdown или LaTeX. Агент выбирает шаблон, язык и макет слайда. Научная статья — один из шаблонов, а не весь инструмент.</p>
 
   <h2>Установка</h2>
+  <p>macOS и Linux:</p>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> записывает формулы как формулы Word. Для слайдов нужен <code>pptx</code>. PDF на macOS и Windows делает Word. На Windows: <code>pip install "latex-docx[win]"</code>. На Linux PDF пишет LibreOffice (<code>soffice</code>), и страница может отличаться от Word.</p>
+  <h3>Windows</h3>
+  <p>Нужны Python 3.9+ с галочкой «Add python.exe to PATH» и установленный Microsoft Word, если нужен PDF. В PowerShell:</p>
+  <pre><code>py -m pip install "latex-docx[omml,pptx,win]"</code></pre>
+  <p>Дополнение <code>win</code> ставит <code>pywin32</code>, через него PDF сохраняет Word. В <code>cmd</code> то же самое, только <code>py</code> можно заменить на <code>python</code>, если он уже в <code>PATH</code>.</p>
+  <p>Из клона репозитория:</p>
+  <pre><code>py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -e ".[omml,pptx,win,dev]"</code></pre>
+  <p>Если PowerShell не даёт запустить <code>Activate.ps1</code>, один раз выполните <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>. В <code>cmd</code> активация другая: <code>.venv\Scripts\activate.bat</code>.</p>
+  <p><code>omml</code> записывает формулы как формулы Word. Для слайдов нужен <code>pptx</code>. На Linux PDF пишет LibreOffice (<code>soffice</code>), и страница может отличаться от Word.</p>
 
   <h2>Командная строка</h2>
   <pre><code>latex-docx article.tex -o out_article.docx

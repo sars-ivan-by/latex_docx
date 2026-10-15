@@ -13,6 +13,8 @@ Speaker note.
 
 ---
 
+::layout Title Only
+
 ## Figure
 
 ![scheme](fig.png)

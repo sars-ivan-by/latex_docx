@@ -19,7 +19,7 @@ def convert(
     source: PathLike,
     output: Optional[PathLike] = None,
     *,
-    template: str = "tdj",
+    template: str = "note",
     authors_json: Optional[PathLike] = None,
     author_ids: Optional[Sequence[str]] = None,
     checklist: bool = False,
@@ -33,8 +33,10 @@ def convert(
 ) -> Path:
     """Build a DOCX from .tex or .md.
 
-    The suffix picks the converter. Markdown ignores template and author
-    arguments. The TD-J checklist stays quiet unless checklist=True.
+    The suffix picks the converter. template is note, letter, memo, report,
+    article, or tdj. Markdown uses it for the page setup and ignores author
+    arguments. The journal checklist stays quiet unless checklist=True and
+    template is tdj.
     pdf=True asks Microsoft Word to write a PDF next to the DOCX.
     pptx=True, or an output path ending in .pptx, builds a presentation
     from Markdown. pptx_template is an organization .pptx file.
@@ -64,7 +66,7 @@ def convert(
             lang=lang,
         )
     if suffix in _MARKDOWN:
-        out = markdown_to_docx(path, output, lang=lang, docx_template=docx_template)
+        out = markdown_to_docx(path, output, lang=lang, docx_template=docx_template, template=template)
     elif suffix in _LATEX:
         out = latex_to_docx(
             path,

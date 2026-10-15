@@ -14,6 +14,7 @@ from docx.oxml.ns import nsdecls, qn
 from docx.shared import Inches, Pt, RGBColor
 
 from .i18n import CAPTION_SKIP, labels_for, normalize_lang
+from .templates import profile_for
 from .constants import (
     BODY_PT,
     FIG_WIDTH,
@@ -23,7 +24,6 @@ from .constants import (
     OMML_NS,
     PAGE_H,
     PAGE_W,
-    TEMPLATES,
     _CENTER_TAB_TWIPS,
     _CONTENT_TWIPS,
     set_run_font,
@@ -49,9 +49,15 @@ _RASTER_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp
 
 
 class DocxBuilder:
-    def __init__(self, lang: str = "ru", style_template: Optional[Union[str, Path]] = None):
+    def __init__(
+        self,
+        lang: str = "ru",
+        style_template: Optional[Union[str, Path]] = None,
+        template: str = "note",
+    ):
         self.lang = normalize_lang(lang)
         self.labels = labels_for(self.lang)
+        self.profile = profile_for(template)
         self.own_typography = style_template is None
         self.footnotes = None
         if style_template:
@@ -61,14 +67,15 @@ class DocxBuilder:
             section = self.doc.sections[0]
             section.page_width = PAGE_W
             section.page_height = PAGE_H
-            section.top_margin = section.bottom_margin = MARGIN
-            section.left_margin = section.right_margin = MARGIN
+            margin = Inches(self.profile.margin_in)
+            section.top_margin = section.bottom_margin = margin
+            section.left_margin = section.right_margin = margin
             section.footer_distance = Inches(0.5)
             normal = self.doc.styles["Normal"]
-            set_style_font(normal, FONT)
-            normal.font.size = Pt(BODY_PT)
+            set_style_font(normal, self.profile.font)
+            normal.font.size = Pt(self.profile.body_pt)
             normal.font.color.rgb = RGBColor(0, 0, 0)
-            normal.paragraph_format.line_spacing = 1.5
+            normal.paragraph_format.line_spacing = self.profile.line_spacing
             normal.paragraph_format.space_after = Pt(0)
             normal.paragraph_format.space_before = Pt(0)
             self._tune_heading_styles()
@@ -80,19 +87,20 @@ class DocxBuilder:
         A style template keeps the organization's fonts. An explicit face
         such as Consolas for code is still applied.
         """
+        face = self.profile.font if not font or font == FONT else font
         if not self.own_typography:
-            if font and font != FONT:
+            if font and font not in (self.profile.font, FONT):
                 set_run_font(run, font, size_pt=size_pt)
             return
-        set_run_font(run, font or FONT, size_pt=size_pt)
+        set_run_font(run, face, size_pt=size_pt)
 
     def _tune_heading_styles(self) -> None:
         for level in range(1, 4):
             style = self._find_heading_style(level)
             if style is None:
                 continue
-            set_style_font(style, FONT)
-            style.font.size = Pt(BODY_PT)
+            set_style_font(style, self.profile.font)
+            style.font.size = Pt(self.profile.body_pt)
             style.font.bold = True
             style.font.italic = level >= 3
             style.font.color.rgb = RGBColor(0, 0, 0)
@@ -130,9 +138,8 @@ class DocxBuilder:
             p_pr.append(outline)
         outline.set(qn("w:val"), str(level))
 
-    @staticmethod
-    def _add_page_numbers(section):
-        """TD-J 2.9: all pages must be numbered."""
+    def _add_page_numbers(self, section):
+        """Centered page number in the footer."""
         footer = section.footer
         footer.is_linked_to_previous = False
         p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
@@ -140,7 +147,7 @@ class DocxBuilder:
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
         run = p.add_run()
-        set_run_font(run, FONT, size_pt=12)
+        set_run_font(run, self.profile.font, size_pt=max(10, self.profile.body_pt - 2))
 
         def _fld(char_type: str):
             el = OxmlElement("w:fldChar")
@@ -178,7 +185,7 @@ class DocxBuilder:
         hanging=0,
     ):
         if size is None:
-            size = BODY_PT
+            size = self.profile.body_pt
         p = self.doc.add_paragraph()
         p.alignment = align
         if hanging > 0:
@@ -381,14 +388,14 @@ class DocxBuilder:
         if style is not None:
             p.style = style
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        p.paragraph_format.first_line_indent = FIRST_INDENT
+        p.paragraph_format.first_line_indent = Inches(0)
         p.paragraph_format.space_before = Pt(space_before)
         p.paragraph_format.space_after = Pt(space_after)
-        p.paragraph_format.line_spacing = 1.5
+        p.paragraph_format.line_spacing = self.profile.line_spacing
         run = p.add_run(text)
         run.bold = True
         run.italic = level >= 3
-        self._font(run, FONT, BODY_PT)
+        self._font(run, None, self.profile.body_pt)
         return p
 
     def _add_footnote(self, paragraph, text: str) -> None:
@@ -534,8 +541,11 @@ class DocxBuilder:
             abstract_tex = getattr(paper, f"abstract_{other}_tex") or ""
         keywords = self._field(paper, "keywords", slot, fallback)
 
+        title_align = (
+            WD_ALIGN_PARAGRAPH.CENTER if self.profile.title_align == "center" else WD_ALIGN_PARAGRAPH.LEFT
+        )
         if title:
-            self.add_p(title, align=WD_ALIGN_PARAGRAPH.CENTER, first_line=0, space_after=12, bold=True, size=BODY_PT)
+            self.add_p(title, align=title_align, first_line=0, space_after=12, bold=True, size=self.profile.body_pt)
         if authors:
             self.add_p(authors, align=WD_ALIGN_PARAGRAPH.CENTER, first_line=0, space_after=4, bold=True)
         if affiliations:
@@ -550,28 +560,47 @@ class DocxBuilder:
             )
         src = abstract_tex or abstract
         if src:
-            if not src.lower().lstrip().startswith(text_labels.abstract_skip):
+            if self.profile.labeled_front and not src.lower().lstrip().startswith(text_labels.abstract_skip):
                 runs = [Run(text_labels.abstract + " ")] + parse_inline(src, cite_map)
             else:
                 runs = parse_inline(src, cite_map)
-            self.add_runs_para(Para(runs=runs, align="justify", first_line=0.49, space_after=6, size=BODY_PT))
+            self.add_runs_para(self._shape_body(Para(runs=runs, align=self.profile.body_align, space_after=6)))
         if keywords:
             text = keywords
-            if not text.lower().startswith(text_labels.keywords_skip):
+            if self.profile.labeled_front and not text.lower().startswith(text_labels.keywords_skip):
                 text = text_labels.keywords + " " + text
-            self.add_p(text, align=WD_ALIGN_PARAGRAPH.JUSTIFY, first_line=0.49, space_after=18, size=BODY_PT)
+            self.add_p(
+                text,
+                align=WD_ALIGN_PARAGRAPH.JUSTIFY if self.profile.body_align == "justify" else WD_ALIGN_PARAGRAPH.LEFT,
+                first_line=self.profile.first_indent_in,
+                space_after=18,
+                size=self.profile.body_pt,
+            )
 
-    def build(self, paper: Paper, template: str = "tdj"):
-        template = (template or "tdj").lower()
-        if template not in TEMPLATES:
-            template = "tdj"
-        one_block = template in ("plain", "article")
+    def _shape_body(self, para: Para) -> Para:
+        """Apply this template's alignment and indent when the builder owns the page."""
+        if not self.own_typography or para.left_indent or para.hanging:
+            return para
+        return Para(
+            runs=para.runs,
+            align=self.profile.body_align,
+            first_line=self.profile.first_indent_in,
+            space_before=para.space_before,
+            space_after=para.space_after,
+            line_spacing=self.profile.line_spacing,
+            size=para.size or self.profile.body_pt,
+        )
+
+    def build(self, paper: Paper, template: str | None = None):
+        if template:
+            self.profile = profile_for(template)
+        profile = self.profile
         cite_map = paper.cite_map or {}
 
-        if paper.udc:
+        if paper.udc and profile.show_udc:
             self.add_p(f"{self.labels.udc}: {paper.udc}", first_line=0, space_after=12, bold=True)
 
-        if one_block:
+        if profile.one_block:
             self._add_front(paper, self.lang, cite_map, fallback=True)
         else:
             self._add_front(paper, "ru", cite_map, fallback=False)
@@ -581,7 +610,7 @@ class DocxBuilder:
             if isinstance(block, Heading):
                 self.add_heading(block.text, space_before=block.space_before, space_after=block.space_after, level=block.level)
             elif isinstance(block, Para):
-                self.add_runs_para(block)
+                self.add_runs_para(self._shape_body(block))
             elif isinstance(block, Equation):
                 self.add_equation(block)
             elif isinstance(block, Figure):
@@ -596,9 +625,11 @@ class DocxBuilder:
                         Para(
                             runs=[Run(prefix)] + list(item),
                             align="left",
-                            first_line=0 if nest else 0.49,
+                            first_line=0 if nest else self.profile.first_indent_in,
                             left_indent=nest,
                             space_after=4,
+                            line_spacing=self.profile.line_spacing,
+                            size=self.profile.body_pt,
                         )
                     )
 

@@ -9,7 +9,7 @@ from typing import Optional, Sequence
 from .constants import DEFAULT_OP_LOG, TEMPLATES, _HAS_OMML, resolve_authors_json
 from .convert import latex_to_docx, markdown_to_docx
 from .diff import write_docx_diff_report
-from .pptx_export import markdown_to_pptx
+from .pptx_export import list_slide_layouts, markdown_to_pptx
 from .util import append_op_log, resolve_by
 from .word_pdf import docx_to_pdf
 
@@ -27,8 +27,8 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument(
         "--template",
         choices=TEMPLATES,
-        default="tdj",
-        help="Front matter: tdj prints Russian then English; plain prints one block",
+        default="note",
+        help="Page setup: note, letter, memo, report, article, plain, or tdj",
     )
     parser.add_argument(
         "--lang",
@@ -87,6 +87,14 @@ def main(argv: Optional[Sequence[str]] = None):
         default=None,
         help="Organization .pptx: theme and layouts, sample slides are dropped",
     )
+    parser.add_argument(
+        "--pptx-layouts",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="TEMPLATE.pptx",
+        help="Print layout names, then exit. Without a file, print the built-in layouts",
+    )
     parser.add_argument("--title-layout", default=None, help="Slide layout name for title slides")
     parser.add_argument(
         "--content-layout",
@@ -94,6 +102,10 @@ def main(argv: Optional[Sequence[str]] = None):
         help="Slide layout name for content slides",
     )
     args = parser.parse_args(argv)
+    if args.pptx_layouts is not None:
+        for line in list_slide_layouts(args.pptx_layouts or None):
+            print(line)
+        return
     src_suffix = Path(args.tex).suffix.lower() if args.tex else ""
     wants_pptx = _wants_pptx(args)
     if not _HAS_OMML and not args.diff_docx and src_suffix != ".docx" and not wants_pptx:
@@ -120,7 +132,7 @@ def main(argv: Optional[Sequence[str]] = None):
         return
 
     if not args.tex:
-        parser.error("tex is required unless --diff-docx is used")
+        parser.error("tex is required unless --diff-docx or --pptx-layouts is used")
 
     src = Path(args.tex)
     if wants_pptx:

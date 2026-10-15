@@ -137,8 +137,9 @@ def test_run_font_sets_rFonts_ascii_hansi():
     assert r_pr is not None
     r_fonts = r_pr.find(qn("w:rFonts"))
     assert r_fonts is not None
-    assert r_fonts.get(qn("w:ascii")) == FONT
-    assert r_fonts.get(qn("w:hAnsi")) == FONT
+    face = builder.profile.font
+    assert r_fonts.get(qn("w:ascii")) == face
+    assert r_fonts.get(qn("w:hAnsi")) == face
 
 
 def test_textbf_preserves_inner_math():

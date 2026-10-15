@@ -15,11 +15,21 @@
     <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
   </nav>
   <h1>latex-docx</h1>
-  <p class="lede">Convert a scientific LaTeX article to Word, a Markdown note to the same DOCX, or Markdown to PowerPoint. PDF is saved by Microsoft Word from that DOCX.</p>
+  <p class="lede">Build a DOCX, PDF, or PowerPoint file from Markdown or LaTeX. An agent picks the template, the language, and the slide layout. A scientific article is one template, not the whole tool.</p>
 
   <h2>Install</h2>
+  <p>macOS and Linux:</p>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> writes formulas as Word math. <code>pptx</code> is required for slides. PDF on macOS and Windows needs Word. On Windows install <code>pip install "latex-docx[win]"</code>. On Linux, PDF is written by LibreOffice (<code>soffice</code>), and the page can differ from Word.</p>
+  <h3>Windows</h3>
+  <p>Install Python 3.9 or newer and tick “Add python.exe to PATH”. PDF also needs Microsoft Word. In PowerShell:</p>
+  <pre><code>py -m pip install "latex-docx[omml,pptx,win]"</code></pre>
+  <p>The <code>win</code> extra installs <code>pywin32</code>, which is how Word writes the PDF. In <code>cmd</code>, use <code>python</code> instead of <code>py</code> when Python is already on <code>PATH</code>.</p>
+  <p>From a git checkout:</p>
+  <pre><code>py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -e ".[omml,pptx,win,dev]"</code></pre>
+  <p>If PowerShell refuses <code>Activate.ps1</code>, run <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> once. In <code>cmd</code> the activator is <code>.venv\Scripts\activate.bat</code>.</p>
+  <p><code>omml</code> writes formulas as Word math. <code>pptx</code> is required for slides. On Linux, PDF is written by LibreOffice (<code>soffice</code>), and the page can differ from Word.</p>
 
   <h2>Command line</h2>
   <pre><code>latex-docx article.tex -o out_article.docx
