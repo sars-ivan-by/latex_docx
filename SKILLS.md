@@ -63,7 +63,7 @@ make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx BY=agent
 
 A result name without the `out` prefix gets one (`letter.docx` becomes `out_letter.docx`). Do not commit large generated DOCX, PDF, or PPTX files unless the person asked.
 
-Formulas without the `omml` extra become italic text. Word math needs `pip install "latex-docx[omml]"`. PDF needs Microsoft Word on the machine. Windows also needs `pywin32`.
+Formulas without the `omml` extra become italic text. Word math needs `pip install "latex-docx[omml]"`. PDF on macOS and Windows needs Microsoft Word. On Windows use `pip install "latex-docx[win]"` so `pywin32` is installed. On Linux, PDF is written by LibreOffice (`soffice` on `PATH`); that page can differ from Word. DOCX and PPTX do not need Word or LibreOffice.
 
 ## LaTeX
 

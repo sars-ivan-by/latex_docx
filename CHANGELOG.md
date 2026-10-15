@@ -7,6 +7,8 @@
 - Headings are Word heading styles. Nested Markdown lists and `[^id]` footnotes are written into the DOCX.
 - `--template article` is a one-block layout for a paper that is not aimed at TD-J.
 - GitHub Pages in Chinese, next to English and Russian.
+- Windows PDF export starts its own Word instance via `pywin32` (`pip install "latex-docx[win]"`), writes the PDF with `ExportAsFixedFormat`, and closes that instance. macOS still uses AppleScript and leaves Word open.
+- Linux PDF export uses LibreOffice (`soffice`). The page can differ from Word. DOCX and PPTX are unchanged on Linux.
 
 ## 0.1.0
 

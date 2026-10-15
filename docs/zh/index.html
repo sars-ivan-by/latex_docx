@@ -19,7 +19,7 @@
 
   <h2>安装</h2>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> 把公式写成 Word 公式。<code>pptx</code> 用于幻灯片。生成 PDF 需要本机已安装 Word。在 Windows 上还需要 <code>pywin32</code>。</p>
+  <p><code>omml</code> 把公式写成 Word 公式。<code>pptx</code> 用于幻灯片。macOS 和 Windows 上的 PDF 由 Word 生成。Windows 请安装 <code>pip install "latex-docx[win]"</code>。Linux 上由 LibreOffice（<code>soffice</code>）生成 PDF，页面可能与 Word 不同。</p>
 
   <h2>命令行</h2>
   <pre><code>latex-docx article.tex -o out_article.docx

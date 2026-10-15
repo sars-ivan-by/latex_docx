@@ -19,7 +19,7 @@
 
   <h2>Install</h2>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> writes formulas as Word math. <code>pptx</code> is required for slides. PDF needs Word on the machine. Windows also needs <code>pywin32</code>.</p>
+  <p><code>omml</code> writes formulas as Word math. <code>pptx</code> is required for slides. PDF on macOS and Windows needs Word. On Windows install <code>pip install "latex-docx[win]"</code>. On Linux, PDF is written by LibreOffice (<code>soffice</code>), and the page can differ from Word.</p>
 
   <h2>Command line</h2>
   <pre><code>latex-docx article.tex -o out_article.docx

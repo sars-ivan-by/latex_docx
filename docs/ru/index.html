@@ -19,7 +19,7 @@
 
   <h2>Установка</h2>
   <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
-  <p><code>omml</code> записывает формулы как формулы Word. Для слайдов нужен <code>pptx</code>. PDF требует установленный Word. На Windows ещё нужен <code>pywin32</code>.</p>
+  <p><code>omml</code> записывает формулы как формулы Word. Для слайдов нужен <code>pptx</code>. PDF на macOS и Windows делает Word. На Windows: <code>pip install "latex-docx[win]"</code>. На Linux PDF пишет LibreOffice (<code>soffice</code>), и страница может отличаться от Word.</p>
 
   <h2>Командная строка</h2>
   <pre><code>latex-docx article.tex -o out_article.docx

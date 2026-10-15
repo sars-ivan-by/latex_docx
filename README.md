@@ -14,7 +14,11 @@ The LaTeX path follows the [TD-J](https://td-j.ru/) journal: Times New Roman 14 
 pip install "latex-docx[omml,pptx]"
 ```
 
-`omml` writes formulas as Word math. Without it they become italic text and the CLI warns. `pptx` is required for slides. PDF needs Microsoft Word on the machine. On Windows also install `pywin32`.
+`omml` writes formulas as Word math. Without it they become italic text and the CLI warns. `pptx` is required for slides. PDF on macOS and Windows needs Microsoft Word. On Windows install the extra that pulls in `pywin32`:
+
+```bash
+pip install "latex-docx[omml,pptx,win]"
+```
 
 From a checkout:
 
@@ -23,7 +27,7 @@ git clone https://github.com/sars-ivan-by/latex_docx.git
 cd latex_docx
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[omml,pptx,dev]"
+pip install -e ".[omml,pptx,win,dev]"
 pytest
 ```
 
@@ -99,7 +103,7 @@ Markdown DOCX: the first `#` is the centered title unless YAML `title:` is set. 
 
 Slides: `---` starts the next slide, `#` is the title slide, `##` is content, `-` is a bullet, `???` is speaker notes. `--pptx-template` keeps size, theme, and layouts and drops slides that were already in the file. See [`examples/slides.md`](examples/slides.md).
 
-PDF is whatever Word saves. macOS uses AppleScript. Windows uses Word through `pywin32`. Word itself is not quit. The first run may ask for permission to control Word.
+PDF on macOS is whatever Word saves via AppleScript; Word is not quit, and the first run may ask for permission to control it. Windows uses a separate Word instance through `pywin32` and closes that instance when the PDF is written. Linux has no Word: `soffice` (LibreOffice) writes the PDF, and the page can differ from Word. Install LibreOffice and keep `soffice` on `PATH`.
 
 ## Limits
 

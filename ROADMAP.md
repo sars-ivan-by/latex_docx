@@ -24,4 +24,4 @@ Nothing is queued. A full DOCX→TeX import stays out of scope: the diff report 
 
 - Replacing pandoc.
 - Reading an arbitrary DOCX and reconstructing the original LaTeX.
-- A PDF renderer that does not go through Word. The PDF is supposed to match the DOCX, and Word is what produces that match.
+- A custom PDF engine. macOS and Windows still ask Word to save the DOCX. Linux uses LibreOffice because Word is not there, and that page can differ.

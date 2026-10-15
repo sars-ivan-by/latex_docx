@@ -39,6 +39,9 @@ omml = [
 pptx = [
   "python-pptx>=1.0",
 ]
+win = [
+  "pywin32>=306; sys_platform == 'win32'",
+]
 dev = [
   "pytest>=7",
   "latex-docx[omml,pptx]",
