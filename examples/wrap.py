@@ -13,6 +13,7 @@
     python wrap.py --diff out_base.docx out_edited.docx -o out_changes.md
     python wrap.py sample.md -o out_sample.docx --pdf
     python wrap.py out_sample.docx -o out_sample.pdf
+    python wrap.py slides.md -o out_slides.pptx --pptx-template org.pptx
 """
 from __future__ import annotations
 
@@ -45,6 +46,10 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Сохранить PDF через Microsoft Word",
     )
+    parser.add_argument("--pptx", action="store_true", help="Собрать PPTX из Markdown")
+    parser.add_argument("--pptx-template", default=None, help="Шаблон организации .pptx")
+    parser.add_argument("--title-layout", default=None)
+    parser.add_argument("--content-layout", default=None)
     args = parser.parse_args(argv)
 
     if args.diff:
@@ -68,6 +73,10 @@ def main(argv: list[str] | None = None) -> None:
         author_ids=ids,
         checklist=args.checklist,
         pdf=args.pdf,
+        pptx=args.pptx or bool(args.pptx_template or args.title_layout or args.content_layout),
+        pptx_template=args.pptx_template,
+        title_layout=args.title_layout,
+        content_layout=args.content_layout,
     )
     print(out)
     if args.pdf:

@@ -8,7 +8,11 @@ BY     ?= user
 
 MD     ?= notes.md
 
-.PHONY: help install test convert convert-md prepare-edit diff pdf
+SLIDES ?= slides.md
+PPTX   ?= out_slides.pptx
+PPTX_TEMPLATE ?=
+
+.PHONY: help install test convert convert-md prepare-edit diff pdf pptx
 
 help:
 	@echo "latex-docx"
@@ -17,6 +21,7 @@ help:
 	@echo "  make convert TEX=a.tex   # → $(BASE)"
 	@echo "  make convert-md MD=a.md  # light Markdown → $(BASE)"
 	@echo "  make pdf                 # DOCX → PDF через Microsoft Word"
+	@echo "  make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx"
 	@echo "  make prepare-edit        # convert + copy → $(EDITED)"
 	@echo "  make diff                # $(BASE) vs $(EDITED) → $(CHANGES)"
 
@@ -35,6 +40,13 @@ convert-md:
 pdf:
 	@test -f $(BASE) || (echo "Missing $(BASE). Run: make convert"; exit 1)
 	$(PYTHON) -m latex_docx $(BASE) -o $(BASE:.docx=.pdf) --by $(BY) --log $(LOG)
+
+pptx:
+	@if [ -n "$(PPTX_TEMPLATE)" ]; then \
+	  $(PYTHON) -m latex_docx $(SLIDES) -o $(PPTX) --pptx-template "$(PPTX_TEMPLATE)" --by $(BY) --log $(LOG); \
+	else \
+	  $(PYTHON) -m latex_docx $(SLIDES) -o $(PPTX) --by $(BY) --log $(LOG); \
+	fi
 
 prepare-edit: convert
 	cp $(BASE) $(EDITED)

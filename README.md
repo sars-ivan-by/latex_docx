@@ -48,6 +48,10 @@ latex-docx notes.md -o out_notes.docx
 # PDF тем же Word из готового DOCX (вёрстка совпадает с документом)
 latex-docx notes.md -o out_notes.docx --pdf
 latex-docx out_notes.docx -o out_notes.pdf
+
+# Markdown → PPTX; шаблон организации задаёт тему и макеты
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
+latex-docx slides.md --pptx --title-layout "Титульный" --content-layout "Заголовок и объект"
 ```
 
 То же через модуль: `python -m latex_docx …`.
@@ -75,14 +79,17 @@ make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md
 Один вызов смотрит на расширение и собирает DOCX. Чеклист TD-J в этом режиме молчит, пока не передать `checklist=True`.
 
 ```python
-from latex_docx import convert, diff, docx_to_pdf
+from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
 
 convert("notes.md", "out_notes.docx")
 convert("article.tex", "out_article.docx", template="tdj", checklist=True)
 convert("notes.md", "out_notes.docx", pdf=True)  # рядом появится out_notes.pdf
 docx_to_pdf("out_notes.docx", "out_notes.pdf")
+markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
+
+Презентация собирается из Markdown (`---` между слайдами, `#` титульный, `##` обычный, `???` заметки докладчика). Нужен extra `pptx`: `pip install "latex-docx[pptx]"`. Файл `--pptx-template` даёт размер, тему и макеты. Слайды, которые уже лежат в этом файле, в результат не попадают. Имена макетов смотрите в PowerPoint и передавайте как `--title-layout` и `--content-layout`.
 
 PDF пишет установленный Microsoft Word: на macOS через osascript, на Windows через Word и `pywin32`. Отдельный рендер не используется, поэтому страница совпадает с DOCX. Word при этом не закрывается, закрывается только открытый файл.
 

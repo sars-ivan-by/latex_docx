@@ -9,6 +9,7 @@ from typing import Optional, Sequence
 from .constants import DEFAULT_OP_LOG, TEMPLATES, _HAS_OMML, resolve_authors_json
 from .convert import latex_to_docx, markdown_to_docx
 from .diff import write_docx_diff_report
+from .pptx_export import markdown_to_pptx
 from .util import append_op_log, resolve_by
 from .word_pdf import docx_to_pdf
 
@@ -65,9 +66,26 @@ def main(argv: Optional[Sequence[str]] = None):
         action="store_true",
         help="After DOCX, save PDF with Microsoft Word (same layout)",
     )
+    parser.add_argument(
+        "--pptx",
+        action="store_true",
+        help="Build a PowerPoint file from Markdown",
+    )
+    parser.add_argument(
+        "--pptx-template",
+        default=None,
+        help="Organization .pptx: theme and layouts, sample slides are dropped",
+    )
+    parser.add_argument("--title-layout", default=None, help="Slide layout name for title slides")
+    parser.add_argument(
+        "--content-layout",
+        default=None,
+        help="Slide layout name for content slides",
+    )
     args = parser.parse_args(argv)
     src_suffix = Path(args.tex).suffix.lower() if args.tex else ""
-    if not _HAS_OMML and not args.diff_docx and src_suffix != ".docx":
+    wants_pptx = _wants_pptx(args)
+    if not _HAS_OMML and not args.diff_docx and src_suffix != ".docx" and not wants_pptx:
         print(
             "Warning: latex2mathml/mathml2omml not installed — formulas will be plain text.\n"
             "  pip install 'latex-docx[omml]'  or  pip install latex2mathml mathml2omml",
@@ -94,6 +112,28 @@ def main(argv: Optional[Sequence[str]] = None):
         parser.error("tex is required unless --diff-docx is used")
 
     src = Path(args.tex)
+    if wants_pptx:
+        if src.suffix.lower() not in {".md", ".markdown"}:
+            parser.error("PPTX собирается из Markdown (.md)")
+        out = markdown_to_pptx(
+            src,
+            args.output,
+            template=args.pptx_template,
+            title_layout=args.title_layout,
+            content_layout=args.content_layout,
+        )
+        print(f"Saved: {out}")
+        if not args.no_log:
+            size = out.stat().st_size if out.exists() else 0
+            append_op_log(
+                "pptx",
+                f"md={src} → pptx={out} size={size}B template={args.pptx_template or '-'}",
+                by=who,
+                log_path=args.log,
+            )
+            print(f"log → {args.log} (by={who})")
+        return
+
     if src.suffix.lower() == ".docx":
         pdf = docx_to_pdf(src, args.output)
         print(f"PDF: {pdf}")
@@ -142,6 +182,12 @@ def main(argv: Optional[Sequence[str]] = None):
             log_path=args.log,
         )
         print(f"log → {args.log} (by={who})")
+
+
+def _wants_pptx(args) -> bool:
+    if args.pptx or args.pptx_template or args.title_layout or args.content_layout:
+        return True
+    return bool(args.output and Path(args.output).suffix.lower() == ".pptx")
 
 
 def _write_pdf(docx_path: Path, enabled: bool) -> Optional[Path]:

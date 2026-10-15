@@ -10,6 +10,8 @@
 
 Документ без журнальной шапки: файл `.md` или `.markdown`. CLI смотрит на расширение и вызывает лёгкий конвертер. Флаг `--template` на Markdown не действует: сборщик берёт `plain`, УДК, аннотацию и английский блок не добавляет.
 
+Презентация: тот же Markdown, выход `.pptx` или флаг `--pptx`. Чтобы слайды совпали с оформлением организации, передайте их готовый файл: `--pptx-template org.pptx`. Из него берутся размер, тема и макеты. Образцы слайдов внутри шаблона в новую презентацию не копируются. Если макет называется не «Title Slide» и не «Title and Content», укажите точные имена `--title-layout` и `--content-layout`. Extra: `pip install "latex-docx[pptx]"`.
+
 Правки, которые человек внёс в Word, обратно в исходник сами не переносятся. Снимите отчёт `--diff-docx` и перенесите правки в `.tex` или `.md` руками.
 
 ## Команды
@@ -22,6 +24,8 @@ latex-docx article.tex --template plain -o out_plain.docx
 latex-docx notes.md -o out_notes.docx
 latex-docx notes.md -o out_notes.docx --pdf
 latex-docx out_notes.docx -o out_notes.pdf
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
+latex-docx slides.md --pptx --title-layout "Титульный слайд" --content-layout "Заголовок и объект"
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
 
@@ -32,14 +36,17 @@ PDF получается из DOCX через Microsoft Word, не отдель�
 Из кода, когда пакет уже установлен (`pip install "latex-docx[omml]"`):
 
 ```python
-from latex_docx import convert, diff, docx_to_pdf
+from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
 
 convert("notes.md", "out_notes.docx")
 convert("notes.md", "out_notes.docx", pdf=True)
 convert("article.tex", "out_article.docx", template="plain", checklist=True)
 docx_to_pdf("out_notes.docx")
+markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx", title_layout="Титульный")
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
+
+Слайды в Markdown: строка `---` начинает следующий слайд. Один `#` — титульный слайд, `##` — обычный. Маркеры `-` становятся списком, картинка отдельной строкой `![подпись](fig.png)`, заметки докладчика после строки `???`. Пример: `examples/slides.md`.
 
 `convert` сам выбирает LaTeX или Markdown по расширению и по умолчанию не печатает чеклист TD-J. Пример обёртки и Makefile, которые можно скопировать в другой проект: `examples/wrap.py`, `examples/Makefile` (`cd examples && make convert SRC=sample.md`).
 
