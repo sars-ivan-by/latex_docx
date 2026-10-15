@@ -44,6 +44,10 @@ latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 
 # лёгкий Markdown → тот же DOCX (записка, отчёт, письмо)
 latex-docx notes.md -o out_notes.docx
+
+# PDF тем же Word из готового DOCX (вёрстка совпадает с документом)
+latex-docx notes.md -o out_notes.docx --pdf
+latex-docx out_notes.docx -o out_notes.pdf
 ```
 
 То же через модуль: `python -m latex_docx …`.
@@ -71,12 +75,16 @@ make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md
 Один вызов смотрит на расширение и собирает DOCX. Чеклист TD-J в этом режиме молчит, пока не передать `checklist=True`.
 
 ```python
-from latex_docx import convert, diff
+from latex_docx import convert, diff, docx_to_pdf
 
 convert("notes.md", "out_notes.docx")
 convert("article.tex", "out_article.docx", template="tdj", checklist=True)
+convert("notes.md", "out_notes.docx", pdf=True)  # рядом появится out_notes.pdf
+docx_to_pdf("out_notes.docx", "out_notes.pdf")
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
+
+PDF пишет установленный Microsoft Word: на macOS через osascript, на Windows через Word и `pywin32`. Отдельный рендер не используется, поэтому страница совпадает с DOCX. Word при этом не закрывается, закрывается только открытый файл.
 
 Чужой проект может скопировать [`examples/wrap.py`](examples/wrap.py) и [`examples/Makefile`](examples/Makefile):
 

@@ -44,7 +44,7 @@ Repository = "https://github.com/sars-ivan-by/latex_docx"
 include = ["latex_docx*"]
 
 [tool.setuptools.package-data]
-latex_docx = ["py.typed"]
+latex_docx = ["py.typed", "*.applescript"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

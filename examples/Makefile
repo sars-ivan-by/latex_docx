@@ -13,7 +13,7 @@ EDITED ?= out_edited.docx
 CHANGES ?= out_changes.md
 TEMPLATE ?= tdj
 
-.PHONY: help convert prepare-edit diff
+.PHONY: help convert prepare-edit diff pdf
 
 help:
 	@echo "latex-docx как библиотека (через $(WRAP))"
@@ -21,9 +21,13 @@ help:
 	@echo "  make convert SRC=article.tex TEMPLATE=plain"
 	@echo "  make prepare-edit"
 	@echo "  make diff"
+	@echo "  make pdf                 # Word сохраняет PDF рядом с DOCX"
 
 convert:
 	$(PYTHON) $(WRAP) $(SRC) -o $(BASE) --template $(TEMPLATE)
+
+pdf: convert
+	$(PYTHON) $(WRAP) $(BASE) -o $(BASE:.docx=.pdf)
 
 prepare-edit: convert
 	cp $(BASE) $(EDITED)

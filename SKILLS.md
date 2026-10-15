@@ -20,18 +20,24 @@
 latex-docx article.tex -o out_article.docx
 latex-docx article.tex --template plain -o out_plain.docx
 latex-docx notes.md -o out_notes.docx
+latex-docx notes.md -o out_notes.docx --pdf
+latex-docx out_notes.docx -o out_notes.pdf
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
+
+PDF получается из DOCX через Microsoft Word, не отдельным движком. На машине должен стоять Word. На Windows для этого вызова ещё нужен `pywin32`. Команда `make pdf` в каталоге пакета берёт уже собранный `BASE`.
 
 То же самое: `python -m latex_docx …`.
 
 Из кода, когда пакет уже установлен (`pip install "latex-docx[omml]"`):
 
 ```python
-from latex_docx import convert, diff
+from latex_docx import convert, diff, docx_to_pdf
 
 convert("notes.md", "out_notes.docx")
+convert("notes.md", "out_notes.docx", pdf=True)
 convert("article.tex", "out_article.docx", template="plain", checklist=True)
+docx_to_pdf("out_notes.docx")
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
 

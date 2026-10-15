@@ -10,13 +10,14 @@ from .constants import DEFAULT_OP_LOG, TEMPLATES, _HAS_OMML, resolve_authors_jso
 from .convert import latex_to_docx, markdown_to_docx
 from .diff import write_docx_diff_report
 from .util import append_op_log, resolve_by
+from .word_pdf import docx_to_pdf
 
 
 def main(argv: Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser(
         description="Convert LaTeX or Markdown to DOCX (TD-J layout for .tex, light layout for .md)"
     )
-    parser.add_argument("tex", nargs="?", help="Input .tex, .md or .markdown file")
+    parser.add_argument("tex", nargs="?", help="Input .tex, .md, .markdown or .docx")
     parser.add_argument(
         "-o",
         "--output",
@@ -59,8 +60,14 @@ def main(argv: Optional[Sequence[str]] = None):
         action="store_true",
         help="Do not append to the operations log",
     )
+    parser.add_argument(
+        "--pdf",
+        action="store_true",
+        help="After DOCX, save PDF with Microsoft Word (same layout)",
+    )
     args = parser.parse_args(argv)
-    if not _HAS_OMML and not args.diff_docx:
+    src_suffix = Path(args.tex).suffix.lower() if args.tex else ""
+    if not _HAS_OMML and not args.diff_docx and src_suffix != ".docx":
         print(
             "Warning: latex2mathml/mathml2omml not installed — formulas will be plain text.\n"
             "  pip install 'latex-docx[omml]'  or  pip install latex2mathml mathml2omml",
@@ -87,14 +94,28 @@ def main(argv: Optional[Sequence[str]] = None):
         parser.error("tex is required unless --diff-docx is used")
 
     src = Path(args.tex)
+    if src.suffix.lower() == ".docx":
+        pdf = docx_to_pdf(src, args.output)
+        print(f"PDF: {pdf}")
+        if not args.no_log:
+            append_op_log(
+                "pdf",
+                f"docx={src} → pdf={pdf}",
+                by=who,
+                log_path=args.log,
+            )
+            print(f"log → {args.log} (by={who})")
+        return
+
     if src.suffix.lower() in {".md", ".markdown"}:
         out = markdown_to_docx(args.tex, args.output)
         print(f"Saved: {out}")
+        pdf = _write_pdf(out, args.pdf)
         if not args.no_log:
             size = out.stat().st_size if out.exists() else 0
             append_op_log(
                 "convert-md",
-                f"md={args.tex} → base={out} size={size}B",
+                f"md={args.tex} → base={out} size={size}B pdf={pdf or '-'}",
                 by=who,
                 log_path=args.log,
             )
@@ -111,15 +132,24 @@ def main(argv: Optional[Sequence[str]] = None):
         author_ids=ids,
     )
     print(f"Saved: {out}")
+    pdf = _write_pdf(out, args.pdf)
     if not args.no_log:
         size = out.stat().st_size if out.exists() else 0
         append_op_log(
             "convert",
-            f"tex={args.tex} → base={out} size={size}B authors={authors_path}",
+            f"tex={args.tex} → base={out} size={size}B authors={authors_path} pdf={pdf or '-'}",
             by=who,
             log_path=args.log,
         )
         print(f"log → {args.log} (by={who})")
+
+
+def _write_pdf(docx_path: Path, enabled: bool) -> Optional[Path]:
+    if not enabled:
+        return None
+    pdf = docx_to_pdf(docx_path)
+    print(f"PDF: {pdf}")
+    return pdf
 
 
 if __name__ == "__main__":

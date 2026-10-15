@@ -11,13 +11,15 @@
     python wrap.py sample.md -o out_sample.docx
     python wrap.py article.tex -o out_article.docx --template plain --checklist
     python wrap.py --diff out_base.docx out_edited.docx -o out_changes.md
+    python wrap.py sample.md -o out_sample.docx --pdf
+    python wrap.py out_sample.docx -o out_sample.pdf
 """
 from __future__ import annotations
 
 import argparse
 import sys
 
-from latex_docx import convert, diff
+from latex_docx import convert, diff, docx_to_pdf
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -38,6 +40,11 @@ def main(argv: list[str] | None = None) -> None:
         metavar=("BASE.docx", "EDITED.docx"),
         help="Сравнить два DOCX и записать отчёт",
     )
+    parser.add_argument(
+        "--pdf",
+        action="store_true",
+        help="Сохранить PDF через Microsoft Word",
+    )
     args = parser.parse_args(argv)
 
     if args.diff:
@@ -46,7 +53,11 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     if not args.source:
-        parser.error("нужен исходник .tex/.md или флаг --diff")
+        parser.error("нужен исходник .tex/.md/.docx или флаг --diff")
+
+    if args.source.lower().endswith(".docx"):
+        print(docx_to_pdf(args.source, args.output))
+        return
 
     ids = [x.strip() for x in args.authors.split(",")] if args.authors else None
     out = convert(
@@ -56,8 +67,11 @@ def main(argv: list[str] | None = None) -> None:
         authors_json=args.authors_json,
         author_ids=ids,
         checklist=args.checklist,
+        pdf=args.pdf,
     )
     print(out)
+    if args.pdf:
+        print(out.with_suffix(".pdf"))
 
 
 if __name__ == "__main__":
