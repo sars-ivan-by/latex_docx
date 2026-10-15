@@ -97,9 +97,9 @@ The parser covers a typical article (`equation` / `align`, `figure` / `subfigure
 
 ## GitHub Pages
 
-English and Russian pages live in [`docs/`](docs/). The workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes them.
+English and Russian pages live in [`docs/`](docs/). [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes them and turns Pages on the first time it runs (`enablement: true`, source GitHub Actions).
 
-In the GitHub repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Push to `main` deploys `https://sars-ivan-by.github.io/latex_docx/`.
+Push to `main`. The site is `https://sars-ivan-by.github.io/latex_docx/`. If the organization blocks Pages, an admin still has to allow it under **Settings → Pages**.
 
 ## Publish to PyPI
 
