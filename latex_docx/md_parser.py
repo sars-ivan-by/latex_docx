@@ -20,6 +20,8 @@ _TABLE_SEP = re.compile(
 )
 _IMAGE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
 _TASK = re.compile(r"^\[([ xX])\]\s+(.*)$")
+_FN_DEF = re.compile(r"^\[\^([^\]]+)\]:\s?(.*)$")
+_FN_REF = re.compile(r"\[\^([^\]]+)\]")
 
 
 def _emit(runs: List[Run], text: str, *, bold=False, italic=False, font=None) -> None:
@@ -51,14 +53,14 @@ def _wrapped(s: str, i: int, marker: str) -> Optional[Tuple[str, int]]:
     return s[i + len(marker) : j], j + len(marker)
 
 
-def _apply_style(runs: List[Run], inner: str, *, bold=False, italic=False) -> None:
-    for r in parse_md_inline(inner):
+def _apply_style(runs: List[Run], inner: str, *, bold=False, italic=False, footnotes=None) -> None:
+    for r in parse_md_inline(inner, footnotes):
         r.bold = r.bold or bold
         r.italic = r.italic or italic
         runs.append(r)
 
 
-def parse_md_inline(text: str) -> List[Run]:
+def parse_md_inline(text: str, footnotes: Optional[dict] = None) -> List[Run]:
     """**bold**, *italic*, `code`, links, and inline math $...$."""
     runs: List[Run] = []
     s = text
@@ -86,6 +88,16 @@ def parse_md_inline(text: str) -> List[Run]:
                 _emit(runs, m.group(1) or m.group(2))
                 i += m.end()
                 continue
+        if s.startswith("[^", i):
+            m = _FN_REF.match(s[i:])
+            if m:
+                key = m.group(1)
+                if footnotes is not None and key in footnotes:
+                    runs.append(Run(footnote=footnotes[key]))
+                else:
+                    _emit(runs, m.group(0))
+                i += m.end()
+                continue
         if s.startswith("[", i):
             m = re.match(r"\[([^\]]+)\]\(([^)]+)\)", s[i:])
             if m:
@@ -99,7 +111,7 @@ def parse_md_inline(text: str) -> List[Run]:
             got = _wrapped(s, i, marker)
             if got:
                 inner, i = got
-                _apply_style(runs, inner, bold=True, italic=True)
+                _apply_style(runs, inner, bold=True, italic=True, footnotes=footnotes)
                 break
         else:
             got = None
@@ -109,7 +121,7 @@ def parse_md_inline(text: str) -> List[Run]:
             got = _wrapped(s, i, marker)
             if got:
                 inner, i = got
-                _apply_style(runs, inner, bold=True)
+                _apply_style(runs, inner, bold=True, footnotes=footnotes)
                 break
         else:
             got = None
@@ -124,7 +136,7 @@ def parse_md_inline(text: str) -> List[Run]:
             if marker == "_" and not prev_ok:
                 close_ok = False
             if close_ok and (marker == "*" or prev_ok):
-                _apply_style(runs, s[i + 1 : j], italic=True)
+                _apply_style(runs, s[i + 1 : j], italic=True, footnotes=footnotes)
                 i = j + 1
                 continue
         _emit(runs, s[i])
@@ -153,14 +165,45 @@ def _is_table_start(lines: List[str], i: int) -> bool:
     return bool(_TABLE_SEP.match(lines[i + 1].strip()))
 
 
+def _indent_width(prefix: str) -> int:
+    width = 0
+    for ch in prefix:
+        if ch == " ":
+            width += 1
+        elif ch == "\t":
+            width += 4
+        else:
+            break
+    return width
+
+
 def _list_match(line: str):
     m = _UL.match(line)
     if m:
-        return False, m.group(3)
+        return False, m.group(3), _indent_width(m.group(1))
     m = _OL.match(line)
     if m:
-        return True, m.group(3)
+        return True, m.group(3), _indent_width(m.group(1))
     return None
+
+
+def _collect_footnotes(lines: List[str]) -> dict:
+    notes = {}
+    i = 0
+    while i < len(lines):
+        match = _FN_DEF.match(lines[i].strip())
+        if match is None:
+            i += 1
+            continue
+        parts = [match.group(2)]
+        i += 1
+        while i < len(lines) and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+            extra = lines[i].strip()
+            if extra:
+                parts.append(extra)
+            i += 1
+        notes[match.group(1)] = " ".join(parts).strip()
+    return notes
 
 
 def _yaml_end(lines: List[str]) -> Optional[int]:
@@ -173,6 +216,46 @@ def _yaml_end(lines: List[str]) -> Optional[int]:
         if lines[j].strip() and ":" not in lines[j]:
             return None
     return None
+
+
+def _read_list(lines: List[str], i: int, footnotes: Optional[dict]):
+    blocks: List[ListBlock] = []
+    current: Optional[ListBlock] = None
+    indent_stack: List[int] = []
+
+    def depth(indent: int) -> int:
+        while indent_stack and indent < indent_stack[-1]:
+            indent_stack.pop()
+        if not indent_stack or indent > indent_stack[-1]:
+            indent_stack.append(indent)
+        return len(indent_stack) - 1
+
+    while i < len(lines):
+        if not lines[i].strip():
+            break
+        hit = _list_match(lines[i])
+        if hit is None:
+            if current is not None and current.items and (
+                lines[i].startswith("  ") or lines[i].startswith("\t")
+            ):
+                extra = lines[i].strip()
+                if extra:
+                    current.items[-1].append(Run(" " + extra))
+                i += 1
+                continue
+            break
+        ordered, item_text, indent = hit
+        level = depth(indent)
+        if current is None or current.ordered != ordered or current.level != level:
+            current = ListBlock(items=[], ordered=ordered, level=level)
+            blocks.append(current)
+        task = _TASK.match(item_text)
+        if task:
+            mark = "☑ " if task.group(1).lower() == "x" else "☐ "
+            item_text = mark + task.group(2)
+        current.items.append(parse_md_inline(item_text, footnotes))
+        i += 1
+    return blocks, i
 
 
 def _blockquote_body(line: str) -> Optional[str]:
@@ -194,6 +277,7 @@ class MarkdownParser:
     def parse(self) -> Paper:
         raw = self.path.read_text(encoding="utf-8")
         lines = raw.splitlines()
+        footnotes = _collect_footnotes(lines)
         paper = Paper()
         i = 0
         yaml_end = _yaml_end(lines)
@@ -238,6 +322,12 @@ class MarkdownParser:
                 i += 1
                 continue
 
+            if _FN_DEF.match(line.strip()):
+                i += 1
+                while i < len(lines) and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+                    i += 1
+                continue
+
             hm = _HEADING.match(line)
             if hm:
                 level = min(len(hm.group(1)), 3)
@@ -256,7 +346,7 @@ class MarkdownParser:
                     parts.append(_blockquote_body(lines[i]) or "")
                     i += 1
                 quote = " ".join(p for p in parts if p.strip())
-                runs = parse_md_inline(quote)
+                runs = parse_md_inline(quote, footnotes)
                 for r in runs:
                     r.italic = True
                 blocks.append(
@@ -266,38 +356,17 @@ class MarkdownParser:
 
             listed = _list_match(line)
             if listed is not None:
-                ordered, _ = listed
-                items: List[List[Run]] = []
-                while i < len(lines):
-                    hit = _list_match(lines[i])
-                    if hit is None:
-                        if lines[i].startswith("  ") and items:
-                            extra = lines[i].strip()
-                            if extra:
-                                items[-1].append(Run(" " + extra))
-                            i += 1
-                            continue
-                        break
-                    same_ordered, item_text = hit
-                    if same_ordered != ordered and items:
-                        break
-                    ordered = same_ordered
-                    task = _TASK.match(item_text)
-                    if task:
-                        mark = "☑ " if task.group(1).lower() == "x" else "☐ "
-                        item_text = mark + task.group(2)
-                    items.append(parse_md_inline(item_text))
-                    i += 1
-                blocks.append(ListBlock(items=items, ordered=ordered))
+                list_blocks, i = _read_list(lines, i, footnotes)
+                blocks.extend(list_blocks)
                 continue
 
             if _is_table_start(lines, i):
                 rows: List[List[List[Run]]] = []
                 header = _split_row(lines[i])
-                rows.append([parse_md_inline(c) for c in header])
+                rows.append([parse_md_inline(c, footnotes) for c in header])
                 i += 2  # header + separator
                 while i < len(lines) and "|" in lines[i] and lines[i].strip():
-                    rows.append([parse_md_inline(c) for c in _split_row(lines[i])])
+                    rows.append([parse_md_inline(c, footnotes) for c in _split_row(lines[i])])
                     i += 1
                 blocks.append(TableBlock(rows=rows))
                 continue
@@ -348,11 +417,12 @@ class MarkdownParser:
                     or _IMAGE.match(nxt.strip())
                     or nxt.strip().startswith("$$")
                     or _HR.match(nxt.strip())
+                    or _FN_DEF.match(nxt.strip())
                 ):
                     break
                 para_lines.append(nxt.strip())
                 i += 1
-            blocks.append(Para(runs=parse_md_inline(" ".join(para_lines))))
+            blocks.append(Para(runs=parse_md_inline(" ".join(para_lines), footnotes)))
 
         paper.body = blocks
         return paper

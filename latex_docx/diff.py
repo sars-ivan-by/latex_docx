@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 import docx
 
 from .constants import DEFAULT_DIFF_REPORT, OMML_NS
+from .i18n import diff_copy
 from .util import ensure_out_prefix
 
 
@@ -167,22 +168,22 @@ def write_docx_diff_report(
     base_docx: Union[str, Path],
     edited_docx: Union[str, Path],
     report_path: Optional[Union[str, Path]] = None,
+    lang: str = "en",
 ) -> Path:
     changes = diff_docx_paragraphs(base_docx, edited_docx)
     report_path = ensure_out_prefix(report_path) if report_path else DEFAULT_DIFF_REPORT
-    kind_en = {"changed": "changed", "removed": "removed", "added": "added"}
+    text = diff_copy(lang)
     lines = [
         f"# DOCX diff: `{Path(edited_docx).name}` vs `{Path(base_docx).name}`",
         "",
-        f"Changes: **{len(changes)}** "
-        "(matched by paragraph text; empty paragraphs are ignored).",
+        text["count"].format(n=len(changes)),
         "",
-        "A full DOCX→TeX import is unreliable (OMML formulas, tables, fields).",
-        "Copy the edits below back into the `.tex` or `.md` by hand.",
+        text["import"],
+        text["by_hand"],
         "",
-        "`base` should be a fresh conversion of the same source (`make convert`),",
-        "and `edited` should be that file after the Word edits.",
-        "Comparing against an older DOCX from another template adds noise.",
+        text["base"],
+        text["edited"],
+        text["noise"],
         "",
     ]
     for n, ch in enumerate(changes, 1):
@@ -193,20 +194,20 @@ def write_docx_diff_report(
             loc.append(f"base¶{bi}")
         if ei is not None:
             loc.append(f"edited¶{ei}")
-        lines.append(f"## {n}. {kind_en.get(kind, kind)} ({', '.join(loc) or '—'})")
+        lines.append(f"## {n}. {text.get(kind, kind)} ({', '.join(loc) or '—'})")
         lines.append("")
         if kind in ("changed", "removed"):
-            lines.append("**before:**")
+            lines.append(text["before"])
             lines.append("")
-            lines.append(ch["base"] or "_(empty)_")
+            lines.append(ch["base"] or text["empty"])
             lines.append("")
         if kind in ("changed", "added"):
-            lines.append("**after:**")
+            lines.append(text["after"])
             lines.append("")
-            lines.append(ch["edited"] or "_(empty)_")
+            lines.append(ch["edited"] or text["empty"])
             lines.append("")
     if not changes:
-        lines.append("_No differences._")
+        lines.append(text["none"])
         lines.append("")
     report_path.write_text("\n".join(lines), encoding="utf-8")
     return report_path

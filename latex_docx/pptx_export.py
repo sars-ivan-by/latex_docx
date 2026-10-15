@@ -108,6 +108,7 @@ def markdown_to_pptx(
     template: Optional[PathLike] = None,
     title_layout: Optional[str] = None,
     content_layout: Optional[str] = None,
+    lang: str = "ru",
 ) -> Path:
     """Build a PPTX from Markdown.
 
@@ -143,7 +144,7 @@ def markdown_to_pptx(
         layout_name = title_layout if spec.kind == "title" else content_layout
         layout = _pick_layout(prs, layout_name, spec.kind)
         slide = prs.slides.add_slide(layout)
-        _fill_slide(slide, spec, Inches)
+        _fill_slide(slide, spec, Inches, lang=lang)
 
     dest = ensure_out_prefix(out_path) if out_path else Path(f"out_{src.stem}.pptx")
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -232,7 +233,8 @@ def _write_lines(shape, lines: Sequence[str]) -> None:
         frame.add_paragraph().text = line
 
 
-def _fill_slide(slide, spec: SlideSpec, inches) -> None:
+def _fill_slide(slide, spec: SlideSpec, inches, lang: str = "ru") -> None:
+    from .i18n import labels_for
     from pptx.enum.shapes import PP_PLACEHOLDER as PH
 
     title = _shape_of_type(slide, (PH.TITLE, PH.CENTER_TITLE))
@@ -247,7 +249,7 @@ def _fill_slide(slide, spec: SlideSpec, inches) -> None:
         body_lines = [*spec.subtitle.split("\n"), *body_lines]
     missing = [path.name for path in spec.images if not path.exists()]
     for name in missing:
-        body_lines.append(f"[image not found: {name}]")
+        body_lines.append("[" + labels_for(lang).image_missing.format(name=name) + "]")
     body = _shape_of_type(slide, (PH.BODY, PH.OBJECT))
     if body is not None and body_lines:
         _write_lines(body, body_lines)

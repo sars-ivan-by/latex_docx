@@ -9,7 +9,9 @@
 <body>
   <nav>
     <a href="../">Home</a>
+    <a href="./roadmap.html">Roadmap</a>
     <a href="../ru/">Русский</a>
+    <a href="../zh/">中文</a>
     <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
   </nav>
   <h1>latex-docx</h1>
@@ -21,18 +23,19 @@
 
   <h2>Command line</h2>
   <pre><code>latex-docx article.tex -o out_article.docx
-latex-docx notes.md -o out_notes.docx --pdf
+latex-docx notes.md -o out_notes.docx --lang en --pdf
 latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md</code></pre>
 
   <h2>Library</h2>
   <pre><code>from latex_docx import convert, docx_to_pdf, markdown_to_pptx
 
-convert("notes.md", "out_notes.docx")
+convert("notes.md", "out_notes.docx", lang="en")
 docx_to_pdf("out_notes.docx")
 markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")</code></pre>
   <p>The organization <code>.pptx</code> supplies slide size, theme, and layouts. Slides already in that file are not copied. Pass <code>title_layout</code> and <code>content_layout</code> when the layout names differ from the defaults.</p>
-  <p>TD-J captions inside the article DOCX stay in Russian (<code>Аннотация</code>, <code>Рис.</code>, <code>Таблица</code>). The tools themselves are in English.</p>
+  <p><code>lang</code> is <code>ru</code> (the default) or <code>en</code>. Template <code>tdj</code> still prints the Russian front matter and then the English front matter. Templates <code>plain</code> and <code>article</code> print one block. <code>--docx-template</code> keeps an organization's Word styles.</p>
+  <p>What comes next is on the <a href="./roadmap.html">roadmap</a>.</p>
 
   <h2>Slides</h2>
   <p>A line <code>---</code> starts the next slide. One <code>#</code> is the title slide, <code>##</code> is a content slide, and <code>???</code> starts speaker notes.</p>

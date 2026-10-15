@@ -2,13 +2,17 @@
 
 Instructions for an agent. Write the source. The DOCX, PDF, or PPTX is a build product, plus the file a person edits in Word or PowerPoint.
 
-A TD-J article is LaTeX. A note, report, letter, or draft is Markdown. A talk is Markdown too, built to PPTX. The DOCX builder uses Times New Roman 14 pt, margins of about 2 cm, line spacing 1.5, a first-line indent, and a centered page number. Journal captions inside that DOCX stay Russian.
+A TD-J article is LaTeX. A note, report, letter, or draft is Markdown. A talk is Markdown too, built to PPTX. The DOCX builder uses Times New Roman 14 pt, margins of about 2 cm, line spacing 1.5, a first-line indent, and a centered page number. Pass `lang="ru"` (the default) or `lang="en"`. Template `tdj` still prints the Russian front matter and then the English front matter. Shared labels (figure, table, references) follow `lang`.
 
 ## Which source
 
 TD-J article, with formulas, figures, references, and a bilingual header: `.tex`, template `tdj` (the default). Russian header only: `--template plain`.
 
-A document without the journal header: `.md` or `.markdown`. `--template` does not apply. The builder uses `plain` and does not add UDC, abstracts, or the English block.
+A document without the journal header: `.md` or `.markdown`. `--template` does not apply. The builder uses `plain` and does not add UDC, abstracts, or the English block. An English article that is not for TD-J is `.tex` with `--template article --lang en`.
+
+Pass `--docx-template org.docx` (or `.dotx`) when the organization already has a Word file. Styles, page setup, headers, and footers come from that file. Sample paragraphs in it are dropped. Headings become Word heading styles either way.
+
+Markdown lists may be indented. A footnote is `[^id]` in the text and `[^id]: the note` on its own line.
 
 A presentation: the same Markdown, with output ending in `.pptx` or with `--pptx`. Pass the organization's deck as `--pptx-template org.pptx` so the size, theme, and layouts match. Sample slides already in that file are dropped. If the layout names are not `Title Slide` and `Title and Content`, pass the exact names with `--title-layout` and `--content-layout`. Install `pip install "latex-docx[pptx]"`.
 
@@ -21,7 +25,7 @@ After `pip install -e ".[omml,pptx,dev]"`:
 ```bash
 latex-docx article.tex -o out_article.docx
 latex-docx article.tex --template plain -o out_plain.docx
-latex-docx notes.md -o out_notes.docx
+latex-docx notes.md -o out_notes.docx --lang en
 latex-docx notes.md -o out_notes.docx --pdf
 latex-docx out_notes.docx -o out_notes.pdf
 latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
@@ -34,7 +38,7 @@ latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```python
 from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
 
-convert("notes.md", "out_notes.docx")
+convert("notes.md", "out_notes.docx", lang="en")
 convert("notes.md", "out_notes.docx", pdf=True)
 convert("article.tex", "out_article.docx", template="plain", checklist=True)
 docx_to_pdf("out_notes.docx")

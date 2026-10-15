@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>路线图 — latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="./">文档</a>
+    <a href="../en/roadmap.html">English</a>
+    <a href="../ru/roadmap.html">Русский</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx/blob/main/ROADMAP.md">ROADMAP.md</a>
+  </nav>
+  <h1>路线图</h1>
+  <p class="lede">0.2.0 已经做到的，以及之后值得做的。这不是下一版的发布日期。仓库里的同一份计划是 <code>ROADMAP.md</code>（英文，与代码文档一致）。</p>
+
+  <h2>已经完成</h2>
+  <ul>
+    <li>常见的 LaTeX 论文可以转成符合 TD-J 要求的 Word 文件。安装 <code>omml</code> 附加组件后，公式写成 Word 公式。</li>
+    <li>简短的 Markdown 走同一套 DOCX 生成器。</li>
+    <li>Markdown 可以生成 PowerPoint。单位的 <code>.pptx</code> 提供尺寸、主题和版式。</li>
+    <li>PDF 是 Microsoft Word 从这份 DOCX 另存的结果。</li>
+    <li>按段落比较两份 DOCX，并写出 Markdown 报告。</li>
+    <li>文档有英文、俄文和中文三套页面。</li>
+    <li>库和命令行支持 <code>ru</code> 或 <code>en</code>。默认是俄文。</li>
+    <li><code>--docx-template</code> 保留单位 <code>.docx</code> 或 <code>.dotx</code> 的样式和页面设置。</li>
+    <li>章节标题使用 Word 标题样式。Markdown 列表可以嵌套，<code>[^id]</code> 会写成 Word 脚注。</li>
+    <li><code>--template article</code> 是单块题头的版式，用于不是投给 TD-J 的文章。</li>
+  </ul>
+
+  <h2>接下来</h2>
+  <p>目前没有排队中的功能。不会把 DOCX 完整导回 TeX。Word 里的修改通过 diff 报告回到源文件。</p>
+
+  <h2>不做</h2>
+  <ul>
+    <li>替代 pandoc。</li>
+    <li>从任意 DOCX 还原原来的 LaTeX。</li>
+    <li>不经过 Word 另写一套 PDF 渲染。PDF 应当与 DOCX 的页面一致。</li>
+  </ul>
+</body>
+</html>

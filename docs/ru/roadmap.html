@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>План — latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="./">Документация</a>
+    <a href="../en/roadmap.html">English</a>
+    <a href="../zh/roadmap.html">中文</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx/blob/main/ROADMAP.md">ROADMAP.md</a>
+  </nav>
+  <h1>План развития</h1>
+  <p class="lede">Что уже есть в 0.2.0 и что имеет смысл делать дальше. Это не срок следующего релиза. Тот же план в репозитории — файл <code>ROADMAP.md</code>.</p>
+
+  <h2>Уже есть</h2>
+  <ul>
+    <li>Типичная статья LaTeX собирается в DOCX по требованиям TD-J. Формулы становятся формулами Word, если установлено дополнение <code>omml</code>.</li>
+    <li>Короткий Markdown идёт в тот же сборщик DOCX.</li>
+    <li>Markdown собирается в PowerPoint. Файл организации <code>.pptx</code> задаёт размер, тему и макеты.</li>
+    <li>PDF — это тот же DOCX, сохранённый Microsoft Word.</li>
+    <li>Сравнение двух DOCX по абзацам, отчёт в Markdown.</li>
+    <li>Документация на английском, русском и китайском.</li>
+    <li>Язык <code>ru</code> или <code>en</code> в библиотеке и в командной строке. По умолчанию русский.</li>
+    <li><code>--docx-template</code> сохраняет стили и поля файла организации <code>.docx</code> или <code>.dotx</code>.</li>
+    <li>Заголовки разделов — стили Word. Списки Markdown могут быть вложенными, а <code>[^id]</code> становится сноской Word.</li>
+    <li><code>--template article</code> — вёрстка с одним блоком шапки, для статьи не в TD-J.</li>
+  </ul>
+
+  <h2>Дальше</h2>
+  <p>Дальше очередь пустая. Полный перенос DOCX обратно в TeX остаётся за рамками. Правки из Word возвращаются через отчёт diff.</p>
+
+  <h2>Не делаем</h2>
+  <ul>
+    <li>Замену pandoc.</li>
+    <li>Восстановление исходного LaTeX из произвольного DOCX.</li>
+    <li>Отдельный рендер PDF в обход Word. PDF должен совпадать со страницей DOCX.</li>
+  </ul>
+</body>
+</html>

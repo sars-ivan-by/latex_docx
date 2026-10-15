@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 import docx
+from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 from docx.shared import Inches, Pt, RGBColor
 
+from .i18n import CAPTION_SKIP, labels_for, normalize_lang
 from .constants import (
     BODY_PT,
     FIG_WIDTH,
@@ -26,6 +29,7 @@ from .constants import (
     set_run_font,
     set_style_font,
 )
+from .footnotes import Footnotes
 from .inline import parse_inline, runs_to_plain
 from .math_omml import latex_math_to_text, latex_to_omml_element
 from .models import (
@@ -38,28 +42,93 @@ from .models import (
     Run,
     TableBlock,
 )
+from .style_template import load_style_document
 from .util import rasterize_pdf
 
 _RASTER_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
 
 
 class DocxBuilder:
-    def __init__(self):
-        self.doc = docx.Document()
-        section = self.doc.sections[0]
-        section.page_width = PAGE_W
-        section.page_height = PAGE_H
-        section.top_margin = section.bottom_margin = MARGIN
-        section.left_margin = section.right_margin = MARGIN
-        section.footer_distance = Inches(0.5)
-        normal = self.doc.styles["Normal"]
-        set_style_font(normal, FONT)
-        normal.font.size = Pt(BODY_PT)
-        normal.font.color.rgb = RGBColor(0, 0, 0)
-        normal.paragraph_format.line_spacing = 1.5
-        normal.paragraph_format.space_after = Pt(0)
-        normal.paragraph_format.space_before = Pt(0)
-        self._add_page_numbers(section)
+    def __init__(self, lang: str = "ru", style_template: Optional[Union[str, Path]] = None):
+        self.lang = normalize_lang(lang)
+        self.labels = labels_for(self.lang)
+        self.own_typography = style_template is None
+        self.footnotes = None
+        if style_template:
+            self.doc = load_style_document(Path(style_template))
+        else:
+            self.doc = docx.Document()
+            section = self.doc.sections[0]
+            section.page_width = PAGE_W
+            section.page_height = PAGE_H
+            section.top_margin = section.bottom_margin = MARGIN
+            section.left_margin = section.right_margin = MARGIN
+            section.footer_distance = Inches(0.5)
+            normal = self.doc.styles["Normal"]
+            set_style_font(normal, FONT)
+            normal.font.size = Pt(BODY_PT)
+            normal.font.color.rgb = RGBColor(0, 0, 0)
+            normal.paragraph_format.line_spacing = 1.5
+            normal.paragraph_format.space_after = Pt(0)
+            normal.paragraph_format.space_before = Pt(0)
+            self._tune_heading_styles()
+            self._add_page_numbers(section)
+
+    def _font(self, run, font: Optional[str], size_pt: Optional[float]) -> None:
+        """Apply Times only when this builder owns the typography.
+
+        A style template keeps the organization's fonts. An explicit face
+        such as Consolas for code is still applied.
+        """
+        if not self.own_typography:
+            if font and font != FONT:
+                set_run_font(run, font, size_pt=size_pt)
+            return
+        set_run_font(run, font or FONT, size_pt=size_pt)
+
+    def _tune_heading_styles(self) -> None:
+        for level in range(1, 4):
+            style = self._find_heading_style(level)
+            if style is None:
+                continue
+            set_style_font(style, FONT)
+            style.font.size = Pt(BODY_PT)
+            style.font.bold = True
+            style.font.italic = level >= 3
+            style.font.color.rgb = RGBColor(0, 0, 0)
+            style.paragraph_format.space_before = Pt(12)
+            style.paragraph_format.space_after = Pt(6)
+            style.paragraph_format.line_spacing = 1.5
+            self._set_outline(style, level - 1)
+
+    def _find_heading_style(self, level: int):
+        level = max(1, min(int(level or 1), 9))
+        want_ids = {f"Heading{level}", f"heading{level}"}
+        want_names = {
+            f"Heading {level}",
+            f"heading {level}",
+            f"Заголовок {level}",
+            f"заголовок {level}",
+        }
+        for style in self.doc.styles:
+            if style.type != WD_STYLE_TYPE.PARAGRAPH:
+                continue
+            style_id = style.element.get(qn("w:styleId")) or ""
+            if style_id in want_ids or style.name in want_names:
+                return style
+        return None
+
+    @staticmethod
+    def _set_outline(style, level: int) -> None:
+        p_pr = style.element.find(qn("w:pPr"))
+        if p_pr is None:
+            p_pr = OxmlElement("w:pPr")
+            style.element.append(p_pr)
+        outline = p_pr.find(qn("w:outlineLvl"))
+        if outline is None:
+            outline = OxmlElement("w:outlineLvl")
+            p_pr.append(outline)
+        outline.set(qn("w:val"), str(level))
 
     @staticmethod
     def _add_page_numbers(section):
@@ -127,7 +196,7 @@ class DocxBuilder:
             for idx, part in enumerate(parts):
                 run = p.add_run(part)
                 run.bold, run.italic = bold, italic
-                set_run_font(run, FONT, size_pt=size)
+                self._font(run, FONT, size)
                 if idx < len(parts) - 1:
                     run.add_break()
         return p
@@ -136,6 +205,9 @@ class DocxBuilder:
         if default_size is None:
             default_size = BODY_PT
         for r in runs:
+            if r.footnote:
+                self._add_footnote(p, r.footnote)
+                continue
             if r.math:
                 el = latex_to_omml_element(r.math, display=False)
                 if el is not None:
@@ -145,7 +217,7 @@ class DocxBuilder:
             for idx, part in enumerate(parts):
                 run = p.add_run(part)
                 run.bold, run.italic = r.bold, r.italic
-                set_run_font(run, r.font or FONT, size_pt=r.size or default_size)
+                self._font(run, r.font or FONT, r.size or default_size)
                 if idx < len(parts) - 1:
                     run.add_break()
 
@@ -218,9 +290,9 @@ class DocxBuilder:
             else:
                 run = p.add_run(eq.text or latex_math_to_text(eq.latex))
                 run.italic = True
-                set_run_font(run, FONT, size_pt=BODY_PT)
+                self._font(run, FONT, BODY_PT)
             num_run = p.add_run(f"\t({eq.number})")
-            set_run_font(num_run, FONT, size_pt=BODY_PT)
+            self._font(num_run, FONT, BODY_PT)
         else:
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             el_disp = latex_to_omml_element(eq.latex, display=True)
@@ -234,7 +306,7 @@ class DocxBuilder:
                 else:
                     run = p.add_run(eq.text or latex_math_to_text(eq.latex))
                     run.italic = True
-                    set_run_font(run, FONT, size_pt=BODY_PT)
+                    self._font(run, FONT, BODY_PT)
         return p
 
     def _add_equation_table(self, eq: Equation):
@@ -262,13 +334,13 @@ class DocxBuilder:
             else:
                 run = p.add_run(eq.text or latex_math_to_text(eq.latex))
                 run.italic = True
-                set_run_font(run, FONT, size_pt=BODY_PT)
+                self._font(run, FONT, BODY_PT)
 
         pn = cell_num.paragraphs[0]
         pn.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         pn.paragraph_format.first_line_indent = Inches(0)
         num_run = pn.add_run(f"({eq.number})")
-        set_run_font(num_run, FONT, size_pt=BODY_PT)
+        self._font(num_run, FONT, BODY_PT)
 
         # Borderless table
         for cell in (cell_math, cell_num):
@@ -302,7 +374,12 @@ class DocxBuilder:
         jc.set(qn("m:val"), "center")
 
     def add_heading(self, text: str, space_before=12, space_after=6, level=1):
+        style = self._find_heading_style(level)
+        if not self.own_typography and style is not None:
+            return self.doc.add_paragraph(text, style=style)
         p = self.doc.add_paragraph()
+        if style is not None:
+            p.style = style
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         p.paragraph_format.first_line_indent = FIRST_INDENT
         p.paragraph_format.space_before = Pt(space_before)
@@ -311,18 +388,19 @@ class DocxBuilder:
         run = p.add_run(text)
         run.bold = True
         run.italic = level >= 3
-        set_run_font(run, FONT, size_pt=BODY_PT)
+        self._font(run, FONT, BODY_PT)
         return p
+
+    def _add_footnote(self, paragraph, text: str) -> None:
+        if self.footnotes is None:
+            self.footnotes = Footnotes(self.doc)
+        self.footnotes.add(paragraph, text)
 
     def add_table(self, rows: List[List[List[Run]]], caption="", number=None):
         if not rows:
             return
         # TD-J: caption above the table, right-aligned
-        cap = caption
-        if number is not None and cap and not cap.lower().startswith("табл"):
-            cap = f"Таблица {number}. {cap}"
-        elif number is not None and not cap:
-            cap = f"Таблица {number}"
+        cap = self._numbered_caption(caption, number, self.labels.table)
         if cap:
             self.add_p(
                 cap,
@@ -417,50 +495,52 @@ class DocxBuilder:
                 try:
                     run.add_picture(str(insert_path), width=FIG_WIDTH)
                 except Exception as e:
-                    run.add_text(f"[could not insert {path.name}: {e}]")
+                    run.add_text("[" + self.labels.image_failed.format(name=path.name, error=e) + "]")
             else:
-                run.add_text(f"[image not found: {path}]")
+                run.add_text("[" + self.labels.image_missing.format(name=path) + "]")
                 run.italic = True
-                set_run_font(run, FONT, size_pt=10)
+                self._font(run, FONT, 10)
 
-        cap = fig.caption
-        if fig.number is not None and cap and not cap.lower().startswith("рис"):
-            cap = f"Рис. {fig.number}. {cap}"
-        elif fig.number is not None and not cap:
-            cap = f"Рис. {fig.number}"
+        cap = self._numbered_caption(fig.caption, fig.number, self.labels.figure)
         if cap:
             self.add_p(cap, align=WD_ALIGN_PARAGRAPH.CENTER, first_line=0, space_after=12, italic=True, size=10)
 
-    def build(self, paper: Paper, template: str = "tdj"):
-        template = (template or "tdj").lower()
-        if template not in TEMPLATES:
-            template = "tdj"
-        cite_map = paper.cite_map or {}
+    def _numbered_caption(self, caption: str, number, word: str) -> str:
+        cap = caption or ""
+        if number is None:
+            return cap
+        if cap and cap.lower().startswith(CAPTION_SKIP):
+            return cap
+        if cap:
+            return f"{word} {number}. {cap}"
+        return f"{word} {number}"
 
-        if paper.udc:
-            self.add_p(f"УДК: {paper.udc}", first_line=0, space_after=12, bold=True)
+    def _field(self, paper: Paper, name: str, slot: str, fallback: bool) -> str:
+        value = getattr(paper, f"{name}_{slot}") or ""
+        if value or not fallback:
+            return value
+        other = "en" if slot == "ru" else "ru"
+        return getattr(paper, f"{name}_{other}") or ""
 
-        if paper.title_ru:
-            self.add_p(
-                paper.title_ru,
-                align=WD_ALIGN_PARAGRAPH.CENTER,
-                first_line=0,
-                space_after=12,
-                bold=True,
-                size=BODY_PT,
-            )
+    def _add_front(self, paper: Paper, slot: str, cite_map: dict, fallback: bool) -> None:
+        text_labels = labels_for(slot)
+        title = self._field(paper, "title", slot, fallback)
+        authors = self._field(paper, "authors", slot, fallback)
+        affiliations = self._field(paper, "affiliations", slot, fallback)
+        abstract = self._field(paper, "abstract", slot, fallback)
+        abstract_tex = getattr(paper, f"abstract_{slot}_tex") or ""
+        if fallback and not abstract_tex:
+            other = "en" if slot == "ru" else "ru"
+            abstract_tex = getattr(paper, f"abstract_{other}_tex") or ""
+        keywords = self._field(paper, "keywords", slot, fallback)
 
-        if paper.authors_ru:
+        if title:
+            self.add_p(title, align=WD_ALIGN_PARAGRAPH.CENTER, first_line=0, space_after=12, bold=True, size=BODY_PT)
+        if authors:
+            self.add_p(authors, align=WD_ALIGN_PARAGRAPH.CENTER, first_line=0, space_after=4, bold=True)
+        if affiliations:
             self.add_p(
-                paper.authors_ru,
-                align=WD_ALIGN_PARAGRAPH.CENTER,
-                first_line=0,
-                space_after=4,
-                bold=True,
-            )
-        if paper.affiliations_ru:
-            self.add_p(
-                paper.affiliations_ru,
+                affiliations,
                 align=WD_ALIGN_PARAGRAPH.CENTER,
                 first_line=0,
                 space_after=12,
@@ -468,66 +548,34 @@ class DocxBuilder:
                 size=12,
                 line_spacing=1.15,
             )
-
-        if paper.abstract_ru or paper.abstract_ru_tex:
-            prefix = [Run("Аннотация. ", bold=False)]
-            src = paper.abstract_ru_tex or paper.abstract_ru
-            if not src.lower().lstrip().startswith("аннотация"):
-                runs = prefix + parse_inline(src, cite_map)
+        src = abstract_tex or abstract
+        if src:
+            if not src.lower().lstrip().startswith(text_labels.abstract_skip):
+                runs = [Run(text_labels.abstract + " ")] + parse_inline(src, cite_map)
             else:
                 runs = parse_inline(src, cite_map)
             self.add_runs_para(Para(runs=runs, align="justify", first_line=0.49, space_after=6, size=BODY_PT))
-
-        if paper.keywords_ru:
-            text = paper.keywords_ru
-            if not text.lower().startswith("ключевые"):
-                text = "Ключевые слова: " + text
+        if keywords:
+            text = keywords
+            if not text.lower().startswith(text_labels.keywords_skip):
+                text = text_labels.keywords + " " + text
             self.add_p(text, align=WD_ALIGN_PARAGRAPH.JUSTIFY, first_line=0.49, space_after=18, size=BODY_PT)
 
-        # tdj: bilingual EN block; plain: RU-only front matter
-        if template == "tdj":
-            if paper.title_en:
-                self.add_p(
-                    paper.title_en,
-                    align=WD_ALIGN_PARAGRAPH.CENTER,
-                    first_line=0,
-                    space_after=12,
-                    bold=True,
-                    size=BODY_PT,
-                )
+    def build(self, paper: Paper, template: str = "tdj"):
+        template = (template or "tdj").lower()
+        if template not in TEMPLATES:
+            template = "tdj"
+        one_block = template in ("plain", "article")
+        cite_map = paper.cite_map or {}
 
-            if paper.authors_en:
-                self.add_p(
-                    paper.authors_en,
-                    align=WD_ALIGN_PARAGRAPH.CENTER,
-                    first_line=0,
-                    space_after=4,
-                    bold=True,
-                )
-            if paper.affiliations_en:
-                self.add_p(
-                    paper.affiliations_en,
-                    align=WD_ALIGN_PARAGRAPH.CENTER,
-                    first_line=0,
-                    space_after=12,
-                    italic=True,
-                    size=12,
-                    line_spacing=1.15,
-                )
+        if paper.udc:
+            self.add_p(f"{self.labels.udc}: {paper.udc}", first_line=0, space_after=12, bold=True)
 
-            if paper.abstract_en or paper.abstract_en_tex:
-                src = paper.abstract_en_tex or paper.abstract_en
-                if not src.lower().lstrip().startswith("abstract"):
-                    runs = [Run("Abstract. ")] + parse_inline(src, cite_map)
-                else:
-                    runs = parse_inline(src, cite_map)
-                self.add_runs_para(Para(runs=runs, align="justify", first_line=0.49, space_after=6, size=BODY_PT))
-
-            if paper.keywords_en:
-                text = paper.keywords_en
-                if not text.lower().startswith("keywords"):
-                    text = "Keywords: " + text
-                self.add_p(text, align=WD_ALIGN_PARAGRAPH.JUSTIFY, first_line=0.49, space_after=18, size=BODY_PT)
+        if one_block:
+            self._add_front(paper, self.lang, cite_map, fallback=True)
+        else:
+            self._add_front(paper, "ru", cite_map, fallback=False)
+            self._add_front(paper, "en", cite_map, fallback=False)
 
         for block in paper.body:
             if isinstance(block, Heading):
@@ -543,15 +591,24 @@ class DocxBuilder:
             elif isinstance(block, ListBlock):
                 for idx, item in enumerate(block.items, 1):
                     prefix = f"{idx}. " if block.ordered else "• "
-                    self.add_runs_para(Para(runs=[Run(prefix)] + list(item), align="left", first_line=0.49, space_after=4))
+                    nest = 0.3 * block.level
+                    self.add_runs_para(
+                        Para(
+                            runs=[Run(prefix)] + list(item),
+                            align="left",
+                            first_line=0 if nest else 0.49,
+                            left_indent=nest,
+                            space_after=4,
+                        )
+                    )
 
         if paper.references:
-            self.add_heading("Список литературы", space_before=18, space_after=12)
+            self.add_heading(self.labels.references, space_before=18, space_after=12)
             for ref in paper.references:
                 self.add_p(ref, first_line=0, space_after=4, size=12, hanging=0.3)
 
         if paper.authors_info:
-            self.add_heading("Сведения об авторах", space_before=18, space_after=12)
+            self.add_heading(self.labels.authors, space_before=18, space_after=12)
             for info in paper.authors_info:
                 self.add_p(info, align=WD_ALIGN_PARAGRAPH.JUSTIFY, first_line=0.49, space_after=6, size=12)
 

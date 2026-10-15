@@ -16,6 +16,7 @@ class Run:
     math: Optional[str] = None  # LaTeX → native Word OMML
     ref_key: Optional[str] = None  # unresolved \ref/\eqref label
     eqref: bool = False  # True → render as (N)
+    footnote: Optional[str] = None  # Word footnote body; the run itself is the reference
 
 
 @dataclass
@@ -65,6 +66,7 @@ class TableBlock:
 class ListBlock:
     items: List[List[Run]]
     ordered: bool = False
+    level: int = 0
 
 
 Block = Union[Para, Heading, Equation, Figure, TableBlock, ListBlock]

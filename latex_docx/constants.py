@@ -32,7 +32,9 @@ DEFAULT_DIFF_REPORT = Path("out_changes.md")
 SUPERSCRIPTS = str.maketrans("0123456789+-=()", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾")
 
 # Front-matter layout templates
-TEMPLATES = ("tdj", "plain")
+# tdj: bilingual journal header. plain and article: one front-matter block.
+# article is the non-journal layout (pair it with lang="en" for English labels).
+TEMPLATES = ("tdj", "plain", "article")
 
 
 def resolve_authors_json(explicit: Optional[Path | str] = None) -> Path:

@@ -42,6 +42,10 @@ Known limits. Closed items are marked `[x]`.
 - [x] light Markdown → DOCX (same `DocxBuilder`, CLI by `.md` suffix)
 - [x] PDF from DOCX through Microsoft Word (`--pdf` / `docx_to_pdf`)
 - [x] Markdown → PPTX, organization template (`--pptx-template`)
+- [x] organization `.docx` / `.dotx` style template (`--docx-template`)
+- [x] section titles use Word heading styles
+- [x] nested Markdown lists and `[^id]` footnotes
+- [x] `--template article` for a one-block paper that is not TD-J
 
 ## Open
 

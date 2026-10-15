@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="../">首页</a>
+    <a href="./roadmap.html">路线图</a>
+    <a href="../en/">English</a>
+    <a href="../ru/">Русский</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
+  </nav>
+  <h1>latex-docx</h1>
+  <p class="lede">把科学论文从 LaTeX 转成 Word，把 Markdown 笔记转成同一套 DOCX，或把 Markdown 转成 PowerPoint。PDF 由 Microsoft Word 从这份 DOCX 另存，版式与 Word 一致。</p>
+
+  <h2>安装</h2>
+  <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
+  <p><code>omml</code> 把公式写成 Word 公式。<code>pptx</code> 用于幻灯片。生成 PDF 需要本机已安装 Word。在 Windows 上还需要 <code>pywin32</code>。</p>
+
+  <h2>命令行</h2>
+  <pre><code>latex-docx article.tex -o out_article.docx
+latex-docx notes.md -o out_notes.docx --lang en --pdf
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
+latex-docx article.tex --template article --lang en --docx-template org.docx
+latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md</code></pre>
+
+  <h2>库</h2>
+  <pre><code>from latex_docx import convert, docx_to_pdf, markdown_to_pptx
+
+convert("notes.md", "out_notes.docx", lang="en")
+docx_to_pdf("out_notes.docx")
+markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")</code></pre>
+  <p>单位的 <code>.pptx</code> 提供幻灯片尺寸、主题和版式。文件里原有的幻灯片不会被复制。版式名称与默认不同时，传入 <code>title_layout</code> 和 <code>content_layout</code>。</p>
+  <p><code>lang</code> 为 <code>ru</code>（默认）或 <code>en</code>。模板 <code>tdj</code> 先写俄文题头，再写英文题头。模板 <code>plain</code> 和 <code>article</code> 只写一块题头。<code>--docx-template</code> 保留单位 Word 文件的样式和页面设置。</p>
+  <p>后续计划见<a href="./roadmap.html">路线图</a>。</p>
+
+  <h2>幻灯片</h2>
+  <p>单独一行 <code>---</code> 开始下一张幻灯片。一个 <code>#</code> 是标题页，<code>##</code> 是内容页，<code>???</code> 之后是演讲者备注。</p>
+
+  <footer>
+    <a href="https://github.com/sars-ivan-by/latex_docx">源码和完整 README</a>
+  </footer>
+</body>
+</html>

@@ -28,7 +28,18 @@ def main(argv: Optional[Sequence[str]] = None):
         "--template",
         choices=TEMPLATES,
         default="tdj",
-        help="Front-matter layout: tdj (bilingual) or plain (RU-only)",
+        help="Front matter: tdj prints Russian then English; plain prints one block",
+    )
+    parser.add_argument(
+        "--lang",
+        choices=("ru", "en"),
+        default="ru",
+        help="Labels and the single-block templates (plain, article). Default: ru",
+    )
+    parser.add_argument(
+        "--docx-template",
+        default=None,
+        help="Organization .docx or .dotx: keep its styles and page setup",
     )
     parser.add_argument(
         "--authors-json",
@@ -96,7 +107,7 @@ def main(argv: Optional[Sequence[str]] = None):
 
     if args.diff_docx:
         base, edited = args.diff_docx
-        report = write_docx_diff_report(base, edited, args.output)
+        report = write_docx_diff_report(base, edited, args.output, lang=args.lang)
         print(f"Diff report: {report}")
         if not args.no_log:
             append_op_log(
@@ -121,6 +132,7 @@ def main(argv: Optional[Sequence[str]] = None):
             template=args.pptx_template,
             title_layout=args.title_layout,
             content_layout=args.content_layout,
+            lang=args.lang,
         )
         print(f"Saved: {out}")
         if not args.no_log:
@@ -148,7 +160,7 @@ def main(argv: Optional[Sequence[str]] = None):
         return
 
     if src.suffix.lower() in {".md", ".markdown"}:
-        out = markdown_to_docx(args.tex, args.output)
+        out = markdown_to_docx(args.tex, args.output, lang=args.lang, docx_template=args.docx_template)
         print(f"Saved: {out}")
         pdf = _write_pdf(out, args.pdf)
         if not args.no_log:
@@ -170,6 +182,8 @@ def main(argv: Optional[Sequence[str]] = None):
         template=args.template,
         authors_json=authors_path,
         author_ids=ids,
+        lang=args.lang,
+        docx_template=args.docx_template,
     )
     print(f"Saved: {out}")
     pdf = _write_pdf(out, args.pdf)

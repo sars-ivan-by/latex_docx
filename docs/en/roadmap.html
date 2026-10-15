@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roadmap — latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="./">Docs</a>
+    <a href="../ru/roadmap.html">Русский</a>
+    <a href="../zh/roadmap.html">中文</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx/blob/main/ROADMAP.md">ROADMAP.md</a>
+  </nav>
+  <h1>Roadmap</h1>
+  <p class="lede">What 0.2.0 already does, and what is worth building next. This is not a release date. The same text lives in the repository as <code>ROADMAP.md</code>.</p>
+
+  <h2>Shipped</h2>
+  <ul>
+    <li>A typical LaTeX article becomes a TD-J Word file. Formulas are Word math when the <code>omml</code> extra is installed.</li>
+    <li>Light Markdown uses the same DOCX builder.</li>
+    <li>Markdown becomes PowerPoint. An organization <code>.pptx</code> supplies size, theme, and layouts.</li>
+    <li>PDF is that DOCX saved by Microsoft Word.</li>
+    <li>A paragraph diff of two DOCX files.</li>
+    <li>Documentation in English, Russian, and Chinese.</li>
+    <li><code>lang="ru"</code> or <code>lang="en"</code> on the library and the CLI. The default is Russian.</li>
+    <li><code>--docx-template</code> keeps an organization's <code>.docx</code> or <code>.dotx</code> styles and page setup.</li>
+    <li>Section titles are Word heading styles. Markdown lists can nest, and <code>[^id]</code> becomes a Word footnote.</li>
+    <li><code>--template article</code> is the one-block layout for a paper that is not a TD-J submission.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <p>Nothing further is queued. A full DOCX→TeX import stays out of scope. Word edits come back through the diff report.</p>
+
+  <h2>Out of scope</h2>
+  <ul>
+    <li>Replacing pandoc.</li>
+    <li>Reconstructing the original LaTeX from an arbitrary DOCX.</li>
+    <li>A PDF renderer that does not go through Word. The PDF is supposed to match the DOCX.</li>
+  </ul>
+</body>
+</html>

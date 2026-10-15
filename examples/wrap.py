@@ -27,7 +27,9 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Library wrapper around latex-docx")
     parser.add_argument("source", nargs="?", help="Input .tex or .md")
     parser.add_argument("-o", "--output", help="Output path (out_ is prefixed when missing)")
-    parser.add_argument("--template", default="tdj", choices=("tdj", "plain"))
+    parser.add_argument("--template", default="tdj", choices=("tdj", "plain", "article"))
+    parser.add_argument("--lang", default="ru", choices=("ru", "en"))
+    parser.add_argument("--docx-template", default=None, help="Organization .docx or .dotx")
     parser.add_argument("--authors-json", default=None)
     parser.add_argument("--authors", default=None, help="Comma-separated author ids")
     parser.add_argument(
@@ -53,7 +55,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.diff:
-        report = diff(args.diff[0], args.diff[1], args.output)
+        report = diff(args.diff[0], args.diff[1], args.output, lang=args.lang)
         print(report)
         return
 
@@ -77,6 +79,8 @@ def main(argv: list[str] | None = None) -> None:
         pptx_template=args.pptx_template,
         title_layout=args.title_layout,
         content_layout=args.content_layout,
+        lang=args.lang,
+        docx_template=args.docx_template,
     )
     print(out)
     if args.pdf:

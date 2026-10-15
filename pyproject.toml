@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "latex-docx"
-version = "0.1.0"
+version = "0.2.0"
 description = "LaTeX and Markdown to DOCX or PPTX, with TD-J layout, OMML math, and DOCX diff"
 readme = "README.md"
 requires-python = ">=3.9"
