@@ -1,22 +1,22 @@
-# Подготовка документов через latex-docx
+# Preparing documents with latex-docx
 
-Инструкция для агента. Пакет собирает DOCX из исходника. Научная статья живёт в LaTeX. Записка, отчёт, письмо, методичка и черновик живут в Markdown. Оба пути заканчиваются одним сборщиком: Times New Roman 14 pt, поля около 2 см, межстрочный 1,5, абзацный отступ, номер страницы внизу по центру.
+Instructions for an agent. Write the source. The DOCX, PDF, or PPTX is a build product, plus the file a person edits in Word or PowerPoint.
 
-Пишите исходник. DOCX только результат конвертации и файл, который человек правит в Word.
+A TD-J article is LaTeX. A note, report, letter, or draft is Markdown. A talk is Markdown too, built to PPTX. The DOCX builder uses Times New Roman 14 pt, margins of about 2 cm, line spacing 1.5, a first-line indent, and a centered page number. Journal captions inside that DOCX stay Russian.
 
-## Какой формат выбрать
+## Which source
 
-Статья в журнал TD-J, с формулами, рисунками, списком литературы и двуязычной шапкой: файл `.tex`, шаблон `tdj` (он стоит по умолчанию). Русская шапка без английского блока: `--template plain`.
+TD-J article, with formulas, figures, references, and a bilingual header: `.tex`, template `tdj` (the default). Russian header only: `--template plain`.
 
-Документ без журнальной шапки: файл `.md` или `.markdown`. CLI смотрит на расширение и вызывает лёгкий конвертер. Флаг `--template` на Markdown не действует: сборщик берёт `plain`, УДК, аннотацию и английский блок не добавляет.
+A document without the journal header: `.md` or `.markdown`. `--template` does not apply. The builder uses `plain` and does not add UDC, abstracts, or the English block.
 
-Презентация: тот же Markdown, выход `.pptx` или флаг `--pptx`. Чтобы слайды совпали с оформлением организации, передайте их готовый файл: `--pptx-template org.pptx`. Из него берутся размер, тема и макеты. Образцы слайдов внутри шаблона в новую презентацию не копируются. Если макет называется не «Title Slide» и не «Title and Content», укажите точные имена `--title-layout` и `--content-layout`. Extra: `pip install "latex-docx[pptx]"`.
+A presentation: the same Markdown, with output ending in `.pptx` or with `--pptx`. Pass the organization's deck as `--pptx-template org.pptx` so the size, theme, and layouts match. Sample slides already in that file are dropped. If the layout names are not `Title Slide` and `Title and Content`, pass the exact names with `--title-layout` and `--content-layout`. Install `pip install "latex-docx[pptx]"`.
 
-Правки, которые человек внёс в Word, обратно в исходник сами не переносятся. Снимите отчёт `--diff-docx` и перенесите правки в `.tex` или `.md` руками.
+Word edits do not flow back into the source. Run `--diff-docx` and copy the changes into the `.tex` or `.md` yourself.
 
-## Команды
+## Commands
 
-Из каталога пакета, после `pip install -e ".[omml,dev]"`:
+After `pip install -e ".[omml,pptx,dev]"`:
 
 ```bash
 latex-docx article.tex -o out_article.docx
@@ -25,15 +25,11 @@ latex-docx notes.md -o out_notes.docx
 latex-docx notes.md -o out_notes.docx --pdf
 latex-docx out_notes.docx -o out_notes.pdf
 latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
-latex-docx slides.md --pptx --title-layout "Титульный слайд" --content-layout "Заголовок и объект"
+latex-docx slides.md --pptx --title-layout "Title Slide" --content-layout "Title and Content"
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
 
-PDF получается из DOCX через Microsoft Word, не отдельным движком. На машине должен стоять Word. На Windows для этого вызова ещё нужен `pywin32`. Команда `make pdf` в каталоге пакета берёт уже собранный `BASE`.
-
-То же самое: `python -m latex_docx …`.
-
-Из кода, когда пакет уже установлен (`pip install "latex-docx[omml]"`):
+`python -m latex_docx` is the same entry point.
 
 ```python
 from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
@@ -42,82 +38,87 @@ convert("notes.md", "out_notes.docx")
 convert("notes.md", "out_notes.docx", pdf=True)
 convert("article.tex", "out_article.docx", template="plain", checklist=True)
 docx_to_pdf("out_notes.docx")
-markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx", title_layout="Титульный")
+markdown_to_pptx(
+    "slides.md",
+    "out_slides.pptx",
+    template="org.pptx",
+    title_layout="Title Slide",
+)
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
 
-Слайды в Markdown: строка `---` начинает следующий слайд. Один `#` — титульный слайд, `##` — обычный. Маркеры `-` становятся списком, картинка отдельной строкой `![подпись](fig.png)`, заметки докладчика после строки `???`. Пример: `examples/slides.md`.
-
-`convert` сам выбирает LaTeX или Markdown по расширению и по умолчанию не печатает чеклист TD-J. Пример обёртки и Makefile, которые можно скопировать в другой проект: `examples/wrap.py`, `examples/Makefile` (`cd examples && make convert SRC=sample.md`).
-
-Makefile:
+`convert` chooses LaTeX or Markdown from the suffix and does not print the TD-J checklist unless asked. A copy-paste wrapper lives in `examples/wrap.py` and `examples/Makefile`.
 
 ```bash
 make convert TEX=article.tex BASE=out_base.docx BY=agent
 make convert-md MD=notes.md BASE=out_notes.docx BY=agent
 make prepare-edit EDITED=out_edited.docx
 make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md BY=agent
+make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx BY=agent
 ```
 
-Имя результата без приставки `out` получит её само (`letter.docx` → `out_letter.docx`). Так файлы попадают под `.gitignore`. В репозитории aspa выходы ещё и `out*.docx` / `out*.md` в корневом ignore. Крупный DOCX не коммитьте, пока человек явно не попросил.
+A result name without the `out` prefix gets one (`letter.docx` becomes `out_letter.docx`). Do not commit large generated DOCX, PDF, or PPTX files unless the person asked.
 
-Если пакет стоит из aspa:
-
-```bash
-pip install -e "./latex_docx[omml,dev]"
-python -m latex_docx papers/.../main.tex -o out_base.docx --by agent
-python -m latex_docx path/notes.md -o out_notes.docx --by agent
-```
-
-Формулы без extra `omml` уходят в обычный курсив. Для нормальных формул Word нужен `pip install 'latex-docx[omml]'`.
+Formulas without the `omml` extra become italic text. Word math needs `pip install "latex-docx[omml]"`. PDF needs Microsoft Word on the machine. Windows also needs `pywin32`.
 
 ## LaTeX
 
-Парсер узкий: типичная статья, не произвольный TeX. Он понимает `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography` и соседний `.bbl`, `\input` / `\include`. Авторы можно подставить из `authors.json` (`--authors id1,id2`). Без флага JSON не затирает уже аккуратную шапку из `.tex`.
+The parser is narrow: a typical article, not arbitrary TeX. It understands `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography` and a sibling `.bbl`, and `\input` / `\include`. Authors can come from `authors.json` (`--authors id1,id2`). Without that flag, JSON does not overwrite a careful author block already in the `.tex`.
 
-Перед сдачей в TD-J конвертер печатает чеклист: УДК, заглавия, аннотации, ключевые слова, введение, заключение, литература, сведения об авторах. Закройте пункты в `.tex`, а не в DOCX.
+Before a TD-J submission the converter prints a checklist: UDC, titles, abstracts, keywords, introduction, conclusion, references, author information. Fix those items in the `.tex`.
 
-Ограничения и закрытый бэклог: `troubles.md`.
+Limits: `troubles.md`.
 
-## Markdown
+## Markdown for DOCX
 
-Первый заголовок `# ...`, если перед ним нет другого блока, становится названием документа по центру. Остальные `#`, `##`, `###` остаются заголовками в теле. Если название задано в шапке, первый `#` остаётся заголовком:
+The first `# ...` heading becomes the centered document title when no earlier block exists. Later `#`, `##`, and `###` stay headings. A YAML title keeps the following `#` as a heading:
 
 ```markdown
 ---
-title: Служебная записка
+title: Memo
 ---
 
-# Основание
+# Reason
 ```
 
-Из шапки читается только строка `title:`. Остальные поля игнорируются.
+Only the `title:` line is read. Other YAML keys are ignored.
 
-Дальше парсер принимает:
+The parser accepts paragraphs separated by a blank line, `**bold**`, `*italic*`, `***both***`, `` `code` ``, links as text plus the URL in parentheses, one-level `-` / `*` / `+` and `1.` lists, `- [ ]` and `- [x]`, a GFM table whose first row is a bold header, an image on its own line `![caption](fig.png)` with a path relative to the `.md`, a fenced code block in Consolas 11 pt with no highlighting, `>` quotes, inline `$E=mc^2$`, unnumbered `$$...$$`, and a `---` rule that is skipped.
 
-- абзацы, разделённые пустой строкой;
-- `**жирный**`, `*курсив*`, `***жирный курсив***`, `` `код` ``;
-- ссылку `[текст](https://example.com)` как текст и адрес в скобках;
-- маркированный список `-` / `*` / `+` и нумерованный `1.` в один уровень;
-- задачу `- [ ]` и `- [x]` как ☐ и ☑;
-- таблицу GitHub Flavored Markdown, первая строка становится шапкой и пишется полужирным;
-- картинку отдельной строкой `![подпись](fig.png)`, путь относительно `.md`;
-- блок кода в тройных обратных кавычках, шрифт Consolas 11 pt, язык подсветки не используется;
-- цитату строками `> ...`;
-- формулу в строке `$E=mc^2$` и выключную `$$...$$` без номера;
-- горизонтальную черту `---` как пустое место, её в DOCX нет.
+`foo_bar` is not italic. Nested lists collapse to one level. Footnotes, HTML, and definition lists are skipped. Markdown images are not numbered `Рис.` / `Таблица`.
 
-`foo_bar` не становится курсивом. Вложенные списки схлопываются в один уровень. Сноски, HTML, определения и автоматическая нумерация «Рис.» / «Таблица» для Markdown не делаются. Подпись картинки берётся из квадратных скобок и пишется под рисунком курсивом, без слова «Рис.».
+## Markdown for PPTX
 
-## Как править после Word
+```markdown
+# Talk title
+Subtitle
 
-1. Соберите базовый DOCX.
-2. Скопируйте его в файл, который откроет человек (`make prepare-edit` или свой `out_edited.docx`).
-3. После правок: `latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md`.
-4. Перенесите смысл правок в исходник и соберите DOCX заново.
+---
 
-Отчёт diff читает и текст формул OMML. Полный автоимпорт DOCX в TeX или Markdown не делайте.
+## First slide
 
-## Чего не делать
+- point
+- another point
 
-Не выдумывайте числа измерений, авторов и выходные данные. Не затирайте сырой `.tex`, `.md` и снятые DOCX человека. Не ставьте pandoc вместо этого конвертера в том же репозитории: оформление держится на `DocxBuilder`. Если разметки Markdown не хватает на формулы с номерами, таблицы со сложной вёрсткой или двуязычную шапку, пишите LaTeX.
+???
+Say this aloud.
+
+---
+
+## Figure
+
+![scheme](fig.png)
+```
+
+## After Word
+
+1. Build the base DOCX.
+2. Copy it to the file the person will edit (`make prepare-edit`).
+3. After the edits: `latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md`.
+4. Copy the meaning of those edits into the source and rebuild.
+
+The diff report includes OMML text. Do not try a full DOCX import into TeX or Markdown.
+
+## What to avoid
+
+Do not invent measurements, authors, or bibliographic data. Do not overwrite the person's `.tex`, `.md`, or edited DOCX. Keep this converter instead of pandoc when the TD-J layout matters: the layout lives in `DocxBuilder`. If Markdown cannot express numbered formulas, a complex table, or a bilingual header, write LaTeX.

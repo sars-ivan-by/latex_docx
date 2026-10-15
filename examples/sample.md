@@ -1,11 +1,11 @@
-# Служебная записка
+# Memo
 
-Короткий пример для `make convert` из этого каталога.
+A short sample for `make convert` in this directory.
 
-## Что проверить
+## Check
 
-- абзац с **полужирным** и формулой $E=mc^2$;
-- список ниже.
+- a paragraph with **bold** text and the formula $E=mc^2$;
+- the list below.
 
-1. Пакет установлен: `pip install "latex-docx[omml]"`.
-2. Сборка идёт через `from latex_docx import convert`.
+1. The package is installed: `pip install "latex-docx[omml]"`.
+2. The build goes through `from latex_docx import convert`.

@@ -1,4 +1,4 @@
-"""DOCX → PDF через Word: пути и ошибки без запуска Word."""
+"""DOCX → PDF via Word: paths and errors without launching Word."""
 from __future__ import annotations
 
 from pathlib import Path

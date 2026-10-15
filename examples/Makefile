@@ -1,5 +1,5 @@
-# Пример для проекта, где latex-docx уже стоит в окружении.
-# Скопируйте Makefile и wrap.py к своим исходникам.
+# Example for a project that already has latex-docx installed.
+# Copy this Makefile and wrap.py next to your sources.
 #
 #   pip install "latex-docx[omml,pptx]"
 #   make convert SRC=sample.md
@@ -20,12 +20,12 @@ PPTX_TEMPLATE ?=
 .PHONY: help convert prepare-edit diff pdf pptx
 
 help:
-	@echo "latex-docx как библиотека (через $(WRAP))"
+	@echo "latex-docx as a library (via $(WRAP))"
 	@echo "  make convert SRC=sample.md BASE=out_base.docx"
 	@echo "  make convert SRC=article.tex TEMPLATE=plain"
 	@echo "  make prepare-edit"
 	@echo "  make diff"
-	@echo "  make pdf                 # Word сохраняет PDF рядом с DOCX"
+	@echo "  make pdf                 # Word writes a PDF next to the DOCX"
 	@echo "  make pptx SLIDES=slides.md PPTX_TEMPLATE=org.pptx"
 
 convert:
@@ -39,10 +39,10 @@ pptx:
 
 prepare-edit: convert
 	cp $(BASE) $(EDITED)
-	@echo "Правьте $(EDITED) в Word, затем: make diff"
+	@echo "Edit $(EDITED) in Word, then: make diff"
 
 diff:
-	@test -f $(BASE) || (echo "Нет $(BASE). Сначала: make convert"; exit 1)
-	@test -f $(EDITED) || (echo "Нет $(EDITED). Сначала: make prepare-edit"; exit 1)
+	@test -f $(BASE) || (echo "Missing $(BASE). Run: make convert"; exit 1)
+	@test -f $(EDITED) || (echo "Missing $(EDITED). Run: make prepare-edit"; exit 1)
 	$(PYTHON) $(WRAP) --diff $(BASE) $(EDITED) -o $(CHANGES)
-	@echo "Отчёт: $(CHANGES)"
+	@echo "Report: $(CHANGES)"

@@ -417,9 +417,9 @@ class DocxBuilder:
                 try:
                     run.add_picture(str(insert_path), width=FIG_WIDTH)
                 except Exception as e:
-                    run.add_text(f"[не удалось вставить: {path.name}: {e}]")
+                    run.add_text(f"[could not insert {path.name}: {e}]")
             else:
-                run.add_text(f"[рисунок не найден: {path}]")
+                run.add_text(f"[image not found: {path}]")
                 run.italic = True
                 set_run_font(run, FONT, size_pt=10)
 

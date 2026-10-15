@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="../">Home</a>
+    <a href="../ru/">Русский</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
+  </nav>
+  <h1>latex-docx</h1>
+  <p class="lede">Convert a scientific LaTeX article to Word, a Markdown note to the same DOCX, or Markdown to PowerPoint. PDF is saved by Microsoft Word from that DOCX.</p>
+
+  <h2>Install</h2>
+  <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
+  <p><code>omml</code> writes formulas as Word math. <code>pptx</code> is required for slides. PDF needs Word on the machine. Windows also needs <code>pywin32</code>.</p>
+
+  <h2>Command line</h2>
+  <pre><code>latex-docx article.tex -o out_article.docx
+latex-docx notes.md -o out_notes.docx --pdf
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
+latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md</code></pre>
+
+  <h2>Library</h2>
+  <pre><code>from latex_docx import convert, docx_to_pdf, markdown_to_pptx
+
+convert("notes.md", "out_notes.docx")
+docx_to_pdf("out_notes.docx")
+markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")</code></pre>
+  <p>The organization <code>.pptx</code> supplies slide size, theme, and layouts. Slides already in that file are not copied. Pass <code>title_layout</code> and <code>content_layout</code> when the layout names differ from the defaults.</p>
+  <p>TD-J captions inside the article DOCX stay in Russian (<code>Аннотация</code>, <code>Рис.</code>, <code>Таблица</code>). The tools themselves are in English.</p>
+
+  <h2>Slides</h2>
+  <p>A line <code>---</code> starts the next slide. One <code>#</code> is the title slide, <code>##</code> is a content slide, and <code>???</code> starts speaker notes.</p>
+
+  <footer>
+    <a href="https://github.com/sars-ivan-by/latex_docx">Source and full README</a>
+  </footer>
+</body>
+</html>

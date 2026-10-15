@@ -22,7 +22,7 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument(
         "-o",
         "--output",
-        help="Output path (имя получит приставку out_, если её нет)",
+        help="Output path (out_ is added to the file name when missing)",
     )
     parser.add_argument(
         "--template",
@@ -114,7 +114,7 @@ def main(argv: Optional[Sequence[str]] = None):
     src = Path(args.tex)
     if wants_pptx:
         if src.suffix.lower() not in {".md", ".markdown"}:
-            parser.error("PPTX собирается из Markdown (.md)")
+            parser.error("PPTX is built from Markdown (.md)")
         out = markdown_to_pptx(
             src,
             args.output,

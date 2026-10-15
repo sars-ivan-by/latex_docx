@@ -10,7 +10,7 @@ from typing import Optional, Tuple, Union
 from .constants import DEFAULT_OP_LOG
 
 def ensure_out_prefix(path: Union[str, Path]) -> Path:
-    """Гарантировать приставку out в имени файла (для .gitignore: out*)."""
+    """Ensure the file name starts with out_ so it matches .gitignore (out*)."""
     p = Path(path)
     if p.name.startswith("out"):
         return p

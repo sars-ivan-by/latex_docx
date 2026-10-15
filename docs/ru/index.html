@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>latex-docx</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <nav>
+    <a href="../">Начало</a>
+    <a href="../en/">English</a>
+    <a href="https://github.com/sars-ivan-by/latex_docx">GitHub</a>
+  </nav>
+  <h1>latex-docx</h1>
+  <p class="lede">Научная статья из LaTeX в Word, заметка из Markdown в тот же DOCX, доклад из Markdown в PowerPoint. PDF сохраняет Microsoft Word из готового DOCX, поэтому страница совпадает с документом.</p>
+
+  <h2>Установка</h2>
+  <pre><code>pip install "latex-docx[omml,pptx]"</code></pre>
+  <p><code>omml</code> записывает формулы как формулы Word. Для слайдов нужен <code>pptx</code>. PDF требует установленный Word. На Windows ещё нужен <code>pywin32</code>.</p>
+
+  <h2>Командная строка</h2>
+  <pre><code>latex-docx article.tex -o out_article.docx
+latex-docx notes.md -o out_notes.docx --pdf
+latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
+latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md</code></pre>
+
+  <h2>Библиотека</h2>
+  <pre><code>from latex_docx import convert, docx_to_pdf, markdown_to_pptx
+
+convert("notes.md", "out_notes.docx")
+docx_to_pdf("out_notes.docx")
+markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")</code></pre>
+  <p>Файл организации <code>.pptx</code> задаёт размер, тему и макеты. Слайды, которые уже лежат в этом файле, не копируются. Если имена макетов другие, передайте <code>title_layout</code> и <code>content_layout</code>.</p>
+  <p>Подписи статьи TD-J внутри DOCX остаются русскими (<code>Аннотация</code>, <code>Рис.</code>, <code>Таблица</code>). Сообщения самой программы на английском.</p>
+
+  <h2>Слайды</h2>
+  <p>Строка <code>---</code> начинает следующий слайд. Один <code>#</code> — титульный, <code>##</code> — обычный, <code>???</code> — заметки докладчика.</p>
+
+  <footer>
+    <a href="https://github.com/sars-ivan-by/latex_docx">Исходники и полный README</a>
+  </footer>
+</body>
+</html>

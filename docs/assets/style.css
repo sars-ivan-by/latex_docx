@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light;
+  --ink: #1c1917;
+  --muted: #57534e;
+  --line: #e7e5e4;
+  --paper: #faf8f5;
+  --code: #f3eee6;
+  --link: #9a3412;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 2.5rem 1.25rem 4rem;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: Palatino, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+nav, footer {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.92rem;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+nav a, p a, li a { color: var(--link); }
+
+h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-top: 2rem;
+}
+
+.lede { color: var(--muted); margin-top: 0; }
+
+pre {
+  background: var(--code);
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cards a {
+  display: block;
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--ink);
+  background: white;
+}
+
+.cards a strong { display: block; font-size: 1.2rem; margin-bottom: 0.35rem; }
+.cards a span { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.92rem; }
+
+footer { margin-top: 3rem; color: var(--muted); }

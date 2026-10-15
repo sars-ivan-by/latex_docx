@@ -12,7 +12,7 @@ class Run:
     bold: bool = False
     italic: bool = False
     size: Optional[float] = None
-    font: Optional[str] = None  # None → Times New Roman сборщика
+    font: Optional[str] = None  # None → the builder's Times New Roman
     math: Optional[str] = None  # LaTeX → native Word OMML
     ref_key: Optional[str] = None  # unresolved \ref/\eqref label
     eqref: bool = False  # True → render as (N)

@@ -20,7 +20,7 @@ help:
 	@echo "  make test                # pytest"
 	@echo "  make convert TEX=a.tex   # → $(BASE)"
 	@echo "  make convert-md MD=a.md  # light Markdown → $(BASE)"
-	@echo "  make pdf                 # DOCX → PDF через Microsoft Word"
+	@echo "  make pdf                 # DOCX → PDF via Microsoft Word"
 	@echo "  make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx"
 	@echo "  make prepare-edit        # convert + copy → $(EDITED)"
 	@echo "  make diff                # $(BASE) vs $(EDITED) → $(CHANGES)"

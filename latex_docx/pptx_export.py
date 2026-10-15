@@ -1,4 +1,4 @@
-"""Markdown → PPTX. Шаблон организации задаёт тему и макеты."""
+"""Markdown → PPTX. An organization template supplies the theme and layouts."""
 from __future__ import annotations
 
 import re
@@ -18,7 +18,7 @@ _IMAGE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
 
 
 class PptxExportError(RuntimeError):
-    """Не удалось собрать PPTX."""
+    """PPTX export failed."""
 
 
 @dataclass
@@ -43,7 +43,7 @@ def _plain(text: str) -> str:
 
 
 def parse_slide_markdown(text: str, base: Path) -> List[SlideSpec]:
-    """Слайды отделяет строка `---` или каждый заголовок `##`."""
+    """Slides are split on a `---` line, or on each `##` heading."""
     raw = text.replace("\r\n", "\n").strip()
     if not raw:
         return []
@@ -109,18 +109,18 @@ def markdown_to_pptx(
     title_layout: Optional[str] = None,
     content_layout: Optional[str] = None,
 ) -> Path:
-    """Собрать PPTX из Markdown.
+    """Build a PPTX from Markdown.
 
-    template — готовый .pptx организации. Берутся его размер, тема и макеты.
-    Слайды, которые уже лежат в файле шаблона, не копируются.
-    title_layout и content_layout — точные имена макетов из этого файла.
+    template is an organization .pptx. Its size, theme, and layouts are kept.
+    Slides already stored in that file are not copied.
+    title_layout and content_layout are exact layout names from the file.
     """
     try:
         from pptx import Presentation
         from pptx.util import Inches
     except ImportError as exc:
         raise PptxExportError(
-            "Для PPTX нужен python-pptx: pip install 'latex-docx[pptx]'"
+            "PPTX needs python-pptx: pip install 'latex-docx[pptx]'"
         ) from exc
 
     src = Path(md_path).resolve()
@@ -128,7 +128,7 @@ def markdown_to_pptx(
         raise FileNotFoundError(src)
     slides = parse_slide_markdown(src.read_text(encoding="utf-8"), src.parent)
     if not slides:
-        raise PptxExportError(f"В {src.name} нет слайдов")
+        raise PptxExportError(f"No slides in {src.name}")
 
     if template:
         template_path = Path(template).resolve()
@@ -169,8 +169,8 @@ def _pick_layout(prs, name: Optional[str], kind: str):
         for layout in prs.slide_layouts:
             if layout.name == name:
                 return layout
-        known = ", ".join(layout.name for layout in prs.slide_layouts) or "(пусто)"
-        raise PptxExportError(f"Макет {name!r} не найден. В шаблоне есть: {known}")
+        known = ", ".join(layout.name for layout in prs.slide_layouts) or "(none)"
+        raise PptxExportError(f"Layout {name!r} was not found. The template has: {known}")
 
     title_types = {PH.TITLE, PH.CENTER_TITLE}
     body_types = {PH.BODY, PH.OBJECT}
@@ -209,7 +209,7 @@ def _pick_layout(prs, name: Optional[str], kind: str):
     if best is None:
         if prs.slide_layouts:
             return prs.slide_layouts[0]
-        raise PptxExportError("В шаблоне нет макетов слайдов")
+        raise PptxExportError("The template has no slide layouts")
     return best
 
 
@@ -247,7 +247,7 @@ def _fill_slide(slide, spec: SlideSpec, inches) -> None:
         body_lines = [*spec.subtitle.split("\n"), *body_lines]
     missing = [path.name for path in spec.images if not path.exists()]
     for name in missing:
-        body_lines.append(f"[рисунок не найден: {name}]")
+        body_lines.append(f"[image not found: {name}]")
     body = _shape_of_type(slide, (PH.BODY, PH.OBJECT))
     if body is not None and body_lines:
         _write_lines(body, body_lines)

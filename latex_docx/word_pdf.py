@@ -1,8 +1,8 @@
-"""DOCX → PDF через установленный Microsoft Word.
+"""DOCX → PDF through a local Microsoft Word install.
 
-Вёрстка берётся из Word, отдельный движок PDF не используется.
-На macOS документ открывает AppleScript, на Windows — Word.Application.
-Word после экспорта не закрываем: закрывается только этот документ.
+The PDF uses Word's layout. There is no second renderer.
+macOS opens the file with AppleScript; Windows uses Word.Application.
+Word itself stays open; only the exported document is closed.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ _MAC_APPS = (
 
 
 class PdfExportError(RuntimeError):
-    """Word не смог записать PDF."""
+    """Word could not write the PDF."""
 
 
 def word_available() -> bool:
@@ -43,12 +43,12 @@ def docx_to_pdf(
     *,
     timeout: float = 180,
 ) -> Path:
-    """Открыть DOCX в Word и сохранить PDF рядом или по явному пути."""
+    """Open a DOCX in Word and save a PDF beside it, or at pdf_path."""
     src = Path(docx_path).resolve()
     if not src.exists():
         raise FileNotFoundError(src)
     if src.suffix.lower() != ".docx":
-        raise PdfExportError(f"Ожидается .docx, получен {src.name}")
+        raise PdfExportError(f"Expected a .docx file, got {src.name}")
     dest = ensure_out_prefix(pdf_path) if pdf_path else default_pdf_path(src)
     dest = dest.resolve()
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -61,22 +61,22 @@ def docx_to_pdf(
         _export_windows(src, dest)
     else:
         raise PdfExportError(
-            "PDF собирается через Microsoft Word, чтобы совпасть с DOCX. "
-            "На этой системе Word недоступен."
+            "PDF is produced by Microsoft Word so it matches the DOCX. "
+            "Word is not available on this system."
         )
     if not dest.exists() or dest.stat().st_size == 0:
-        raise PdfExportError(f"Word не записал PDF: {dest}")
+        raise PdfExportError(f"Word did not write the PDF: {dest}")
     return dest
 
 
 def _export_macos(src: Path, dest: Path, timeout: float) -> None:
     if not word_available():
         raise PdfExportError(
-            "Microsoft Word не найден в /Applications. "
-            "PDF пишется тем же Word, что открывает DOCX."
+            "Microsoft Word was not found in /Applications. "
+            "The PDF is written by the same Word that opens the DOCX."
         )
     if not _SCRIPT.is_file():
-        raise PdfExportError(f"Нет скрипта Word: {_SCRIPT.name}")
+        raise PdfExportError(f"Missing Word script: {_SCRIPT.name}")
     cmd = ["/usr/bin/osascript", str(_SCRIPT), str(src), str(dest)]
     try:
         proc = subprocess.run(
@@ -88,11 +88,11 @@ def _export_macos(src: Path, dest: Path, timeout: float) -> None:
         )
     except subprocess.TimeoutExpired as exc:
         raise PdfExportError(
-            f"Word не сохранил PDF за {int(timeout)} с. Закройте диалоги Word и повторите."
+            f"Word did not save the PDF within {int(timeout)}s. Close Word dialogs and retry."
         ) from exc
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
-        raise PdfExportError(detail or "osascript завершился с ошибкой")
+        raise PdfExportError(detail or "osascript failed")
 
 
 def _export_windows(src: Path, dest: Path) -> None:
@@ -100,8 +100,8 @@ def _export_windows(src: Path, dest: Path) -> None:
         import win32com.client
     except ImportError as exc:
         raise PdfExportError(
-            "На Windows нужен pywin32: pip install pywin32. "
-            "PDF сохраняет установленный Microsoft Word."
+            "Windows needs pywin32: pip install pywin32. "
+            "The PDF is saved by the installed Microsoft Word."
         ) from exc
     word = win32com.client.Dispatch("Word.Application")
     doc = word.Documents.Open(str(src))

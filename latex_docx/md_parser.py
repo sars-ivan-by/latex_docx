@@ -1,4 +1,4 @@
-"""Лёгкий Markdown → модель Paper (тот же конвейер, что у LaTeX)."""
+"""Light Markdown → Paper model (same pipeline as LaTeX)."""
 from __future__ import annotations
 
 import re
@@ -59,7 +59,7 @@ def _apply_style(runs: List[Run], inner: str, *, bold=False, italic=False) -> No
 
 
 def parse_md_inline(text: str) -> List[Run]:
-    """**жирный**, *курсив*, `код`, ссылки и inline-формулы $...$."""
+    """**bold**, *italic*, `code`, links, and inline math $...$."""
     runs: List[Run] = []
     s = text
     i, n = 0, len(s)
@@ -164,7 +164,7 @@ def _list_match(line: str):
 
 
 def _yaml_end(lines: List[str]) -> Optional[int]:
-    """Индекс закрывающего ---, если файл начинается с короткого YAML-блока."""
+    """Index of the closing --- when the file starts with a short YAML block."""
     if not lines or lines[0].strip() != "---":
         return None
     for j in range(1, len(lines)):
@@ -185,7 +185,7 @@ def _blockquote_body(line: str) -> Optional[str]:
 
 
 class MarkdownParser:
-    """Подмножество CommonMark: заголовки, абзацы, списки, таблицы, код, картинки, $формулы$."""
+    """CommonMark subset: headings, paragraphs, lists, tables, code, images, $math$."""
 
     def __init__(self, path: Path):
         self.path = Path(path)

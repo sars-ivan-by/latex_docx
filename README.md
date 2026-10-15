@@ -1,130 +1,122 @@
 # latex-docx
 
-Конвертер научных статей LaTeX → Microsoft Word (DOCX) с оформлением близким к требованиям журнала [TD-J](https://td-j.ru/): Times New Roman 14 pt, поля ~2 см, номера формул справа, OMML-математика.
+Convert a typical scientific article from LaTeX to Microsoft Word, a light Markdown file to the same DOCX layout, or Markdown to PowerPoint. The Word file can be saved as PDF by Microsoft Word, so the PDF matches the DOCX.
 
-Не замена pandoc: узкий парсер под типичные статьи (equation/align, figure, tabular, thebibliography, bilingual front matter).
+The LaTeX path follows the [TD-J](https://td-j.ru/) journal: Times New Roman 14 pt, margins of about 2 cm, equation numbers on the right, OMML math. Labels inside that DOCX stay in Russian (`Аннотация`, `Рис.`, `Таблица`) because the journal asks for them. Tooling, errors, and this repository are in English.
 
-## Установка
+This is not a pandoc replacement. The LaTeX parser covers a typical article: `equation` / `align`, `figure`, `tabular`, `thebibliography`, bilingual front matter.
 
-Как библиотека в уже существующее окружение:
+Documentation: [English](https://sars-ivan-by.github.io/latex_docx/en/) · [Русский](https://sars-ivan-by.github.io/latex_docx/ru/).
+
+## Install
 
 ```bash
-pip install "latex-docx[omml]"
-# из git, если пакета нет на PyPI:
-pip install "latex-docx[omml] @ git+https://github.com/sars-ivan-by/latex_docx.git"
+pip install "latex-docx[omml,pptx]"
 ```
 
-Разработка этого репозитория:
+`omml` turns formulas into Word math. Without it, formulas become italic text. `pptx` is required for presentations. On Windows, PDF export also needs `pip install pywin32` and a local Word install.
+
+From a git checkout:
 
 ```bash
 git clone https://github.com/sars-ivan-by/latex_docx.git
 cd latex_docx
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[omml,dev]"
+source .venv/bin/activate
+pip install -e ".[omml,pptx,dev]"
 ```
 
-Без extra `omml` формулы уйдут в plain italic. В Word для формул ставьте `omml`.
-
-## Быстрый старт
+## Quick start
 
 ```bash
-# .tex → DOCX
 latex-docx article.tex -o out_article.docx
-
-# шаблон без английской шапки
 latex-docx article.tex --template plain -o out_plain.docx
-
-# авторы из JSON (см. authors.example.json)
-cp authors.example.json authors.json   # отредактируйте
 latex-docx article.tex --authors alice,bob -o out_article.docx
 
-# diff двух DOCX → markdown-отчёт (правки из Word переносите в .tex вручную)
-latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
-
-# лёгкий Markdown → тот же DOCX (записка, отчёт, письмо)
 latex-docx notes.md -o out_notes.docx
-
-# PDF тем же Word из готового DOCX (вёрстка совпадает с документом)
 latex-docx notes.md -o out_notes.docx --pdf
 latex-docx out_notes.docx -o out_notes.pdf
 
-# Markdown → PPTX; шаблон организации задаёт тему и макеты
 latex-docx slides.md -o out_slides.pptx --pptx-template org.pptx
-latex-docx slides.md --pptx --title-layout "Титульный" --content-layout "Заголовок и объект"
+latex-docx slides.md --pptx --title-layout "Title Slide" --content-layout "Title and Content"
+
+latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
 
-То же через модуль: `python -m latex_docx …`.
-
-### Makefile (опционально)
+The same commands work as `python -m latex_docx`. Output names gain an `out_` prefix when they lack one (see `.gitignore`).
 
 ```bash
 make convert TEX=article.tex BASE=out_base.docx
 make convert-md MD=notes.md BASE=out_notes.docx
 make prepare-edit EDITED=out_edited.docx
-# правки в Word…
 make diff BASE=out_base.docx EDITED=out_edited.docx CHANGES=out_changes.md
+make pdf
+make pptx SLIDES=slides.md PPTX=out_slides.pptx PPTX_TEMPLATE=org.pptx
 ```
 
-Все выходные имена с приставкой `out` (см. `.gitignore`).
-
-## Авторы (`authors.json`)
-
-Поиск файла: `--authors-json` → `./authors.json` (cwd) → `authors.json` в корне репо → `authors.example.json`.
-
-Скопируйте пример и заполните `id`, ФИО, `org_ids`, блок `organizations`. Явный `--authors id1,id2` всегда перезаписывает авторов; без флага JSON не затирает уже аккуратный front matter из `.tex` (надстрочные индексы организаций).
-
-## Библиотека
-
-Один вызов смотрит на расширение и собирает DOCX. Чеклист TD-J в этом режиме молчит, пока не передать `checklist=True`.
+## Library
 
 ```python
 from latex_docx import convert, diff, docx_to_pdf, markdown_to_pptx
 
 convert("notes.md", "out_notes.docx")
 convert("article.tex", "out_article.docx", template="tdj", checklist=True)
-convert("notes.md", "out_notes.docx", pdf=True)  # рядом появится out_notes.pdf
+convert("notes.md", "out_notes.docx", pdf=True)
 docx_to_pdf("out_notes.docx", "out_notes.pdf")
 markdown_to_pptx("slides.md", "out_slides.pptx", template="org.pptx")
 diff("out_base.docx", "out_edited.docx", "out_changes.md")
 ```
 
-Презентация собирается из Markdown (`---` между слайдами, `#` титульный, `##` обычный, `???` заметки докладчика). Нужен extra `pptx`: `pip install "latex-docx[pptx]"`. Файл `--pptx-template` даёт размер, тему и макеты. Слайды, которые уже лежат в этом файле, в результат не попадают. Имена макетов смотрите в PowerPoint и передавайте как `--title-layout` и `--content-layout`.
+`convert` picks LaTeX or Markdown from the suffix. The TD-J checklist is silent unless `checklist=True`. Copy [`examples/wrap.py`](examples/wrap.py) and [`examples/Makefile`](examples/Makefile) into another project.
 
-PDF пишет установленный Microsoft Word: на macOS через osascript, на Windows через Word и `pywin32`. Отдельный рендер не используется, поэтому страница совпадает с DOCX. Word при этом не закрывается, закрывается только открытый файл.
+Agent notes for choosing a source format: [`SKILLS.md`](SKILLS.md).
 
-Чужой проект может скопировать [`examples/wrap.py`](examples/wrap.py) и [`examples/Makefile`](examples/Makefile):
+## Authors
 
-```bash
-cd examples
-make convert SRC=sample.md
-```
+`--authors-json`, then `./authors.json`, then `authors.json` in the repo, then `authors.example.json`. Copy the example and fill `id`, names, `org_ids`, and `organizations`. `--authors id1,id2` always replaces the author block. Without that flag, a careful front matter already present in the `.tex` is left as it is.
 
-Низкий уровень, если нужен разбор без записи файла:
+## Markdown and slides
 
-```python
-from pathlib import Path
-from latex_docx import latex_to_docx, markdown_to_docx, LatexParser
+For DOCX, the first `#` heading becomes the centered title unless YAML `title:` is set. The parser accepts paragraphs, `**bold**`, `*italic*`, `` `code` ``, links, one-level lists, task items, GFM tables, images, fenced code, quotes, and `$...$` / `$$...$$`.
 
-latex_to_docx("article.tex", "out_article.docx", template="tdj")
-markdown_to_docx("notes.md", "out_notes.docx")
-paper = LatexParser(Path("article.tex")).parse()
-```
+For PPTX, a line `---` starts the next slide. A single `#` is the title slide, `##` is a content slide, `-` is a bullet, and `???` starts speaker notes. See [`examples/slides.md`](examples/slides.md). `--pptx-template` keeps the file's size, theme, and layouts, and drops sample slides that were already in it.
 
-Как агенту выбрать `.tex` или `.md` и что парсер Markdown принимает: [`SKILLS.md`](SKILLS.md).
+## PDF
 
-## Тесты
+PDF is whatever Word saves from the DOCX. macOS uses AppleScript. Windows uses Word through `pywin32`. Word is not quit; only that document is closed. The first run may ask for permission to control Word.
+
+## Tests
 
 ```bash
 pytest
 ```
 
-## Ограничения
+## Limits
 
-Парсер покрывает типичные статьи (equation/align, figure/subfigure, tabular/tabularx/longtable,
-thebibliography и `.bbl`). Полный автоимпорт DOCX→TeX по-прежнему ненадёжен — используйте
-`--diff-docx` и переносите правки в `.tex` вручную. Актуальный бэклог: [`troubles.md`](troubles.md).
+The parser covers a typical article (`equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography`, and a sibling `.bbl`). Do not auto-import a DOCX back into TeX. Use `--diff-docx` and edit the source. Backlog: [`troubles.md`](troubles.md).
 
-## Лицензия
+## GitHub Pages
 
-MIT. См. [`LICENSE`](LICENSE).
+English and Russian pages live in [`docs/`](docs/). The workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes them.
+
+In the GitHub repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Push to `main` deploys `https://sars-ivan-by.github.io/latex_docx/`.
+
+## Publish to PyPI
+
+The project name `latex-docx` is unused on PyPI as of this packaging. Version lives in `pyproject.toml`.
+
+1. On [pypi.org](https://pypi.org/manage/account/publishing/), add a pending publisher: owner `sars-ivan-by`, repository `latex_docx`, workflow `pypi.yml`, environment `pypi`.
+2. In the GitHub repository, create an environment named `pypi` (**Settings → Environments**).
+3. Tag a release. [`.github/workflows/pypi.yml`](.github/workflows/pypi.yml) builds the sdist and wheel and uploads them with PyPI trusted publishing. No API token is stored in the repo.
+
+Local check, without uploading:
+
+```bash
+pip install build twine
+python -m build
+twine check dist/*
+```
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

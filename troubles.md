@@ -1,48 +1,48 @@
-# Проблемы и бэклог latex-docx
+# latex-docx issues and backlog
 
-Известные ограничения конвертера. Закрытые пункты помечены `[x]`.
+Known limits. Closed items are marked `[x]`.
 
-## Сделано
+## Done
 
-- [x] нет игнорирования **
-- [x] знак корня по дефолту ставит с произвольной степенью
-- [x] нет надстрочных цифр для указания какой автор откуда
-  (регресс: длинные аффилиации из `.tex` без ¹… больше не блокируют `authors.json`)
-- [x] ФИО авторов в `authors.json` / `authors.example.json`
-- [x] поддержка нескольких форматов шаблонов (`--template tdj|plain`)
-- [x] таблички: без заливки, чёрные границы
-- [x] номера таблиц / картинок / формул (не артефакты tab:/fig:/eq:)
-- [x] `--diff-docx` → markdown-отчёт (полный автоимпорт DOCX→TeX ненадёжен)
-- [x] в таблицах артефакт "|c|c|c|p5.8cm|" в первой ячейке
-- [x] номера формул, центрирование, номер справа
-- [x] средитекстовые формулы → OMML
-- [x] `cases` / `matrix`: `\\` и `&` защищены в prep
-- [x] `align` → `aligned` (не схлопывается в одну строку)
-- [x] `\ref{sec:…}` / `\label` на section/subsection
-- [x] `\_` в `\mathrm` не превращается в subscript
-- [x] `apply_authors_db` не затирает аккуратных авторов из tex
-- [x] шрифт `w:rFonts` ascii/hAnsi (macOS Word)
-- [x] пакет разбит на модули; есть pytest-регрессии
-- [x] `\textbf{…$math$…}` сохраняет OMML (не Unicode)
-- [x] ячейки таблиц — Runs + OMML (не только plain text)
-- [x] высокие numbered display-формулы (`cases`/дроби) → display OMML в 2-col table
-- [x] PDF-рисунки растеризуются через `pdftoppm` / ImageMagick
-- [x] `--diff-docx` читает текст OMML (`m:t`), видит правки формул
-- [x] аннотация при сборке с `paper.cite_map` — `\cite{key}` → `[N]`
-- [x] автодетект `by=agent`: больше env-маркеров + argv/psutil heuristics
-- [x] `\input` / `\include` (рекурсивно, с защитой от циклов)
+- [x] `**` is not ignored
+- [x] roots do not force an arbitrary degree by default
+- [x] affiliation markers use superscripts
+  (regression: long affiliations from `.tex` without ¹… no longer block `authors.json`)
+- [x] author names in `authors.json` / `authors.example.json`
+- [x] several front-matter templates (`--template tdj|plain`)
+- [x] tables: no fill, black borders
+- [x] table / figure / equation numbers (not `tab:` / `fig:` / `eq:` leftovers)
+- [x] `--diff-docx` writes a Markdown report (full DOCX→TeX import stays unreliable)
+- [x] tables no longer leak `|c|c|c|p5.8cm|` into the first cell
+- [x] equation numbers, centering, number on the right
+- [x] inline formulas become OMML
+- [x] `cases` / `matrix`: `\\` and `&` survive prep
+- [x] `align` becomes `aligned` (it does not collapse to one line)
+- [x] `\ref{sec:…}` / `\label` on section and subsection
+- [x] `\_` inside `\mathrm` does not become a subscript
+- [x] `apply_authors_db` does not overwrite a careful author block from TeX
+- [x] font `w:rFonts` ascii/hAnsi (macOS Word)
+- [x] the package is split into modules, with pytest regressions
+- [x] `\textbf{…$math$…}` keeps OMML (not a Unicode fallback)
+- [x] table cells are runs plus OMML, not plain text only
+- [x] tall numbered displays (`cases` / fractions) use display OMML in a 2-column table
+- [x] PDF figures are rasterized with `pdftoppm` / ImageMagick
+- [x] `--diff-docx` reads OMML text (`m:t`) and sees formula edits
+- [x] abstracts built with `paper.cite_map` turn `\cite{key}` into `[N]`
+- [x] `by=agent` detection: more env markers, plus argv heuristics
+- [x] `\input` / `\include` (recursive, with a cycle guard)
 - [x] `tabularx` / `longtable` / `\multicolumn` / `\multirow` / booktabs
-- [x] BibTeX / biblatex через соседний `.bbl` (`\bibliography` / `\addbibresource`)
-- [x] несколько `\includegraphics` в одном `figure` — один номер; `subfigure` → (a)/(b)
-- [x] `find_balanced` в `\vspace` через `_safe_balanced` — битый tex не роняет парсер
-- [x] `latex2mathml` / OMML: предупреждения вместо молчаливого `None`
-- [x] `_unwrap_omml_boxes` снимает и `<m:box>` с `boxPr`
-- [x] `\bmod` → spaced `mod` в flat text / `\operatorname{mod}` в prep
-- [x] подпись таблицы: перед таблицей, выравнивание справа (TD-J)
-- [x] лёгкий Markdown → DOCX (тот же DocxBuilder, CLI по расширению `.md`)
-- [x] PDF из DOCX через Microsoft Word (`--pdf` / `docx_to_pdf`)
-- [x] Markdown → PPTX, шаблон организации (`--pptx-template`)
+- [x] BibTeX / biblatex via a sibling `.bbl` (`\bibliography` / `\addbibresource`)
+- [x] several `\includegraphics` in one `figure` share one number; `subfigure` becomes (a)/(b)
+- [x] `find_balanced` inside `\vspace` uses `_safe_balanced`, so broken TeX does not crash the parser
+- [x] `latex2mathml` / OMML: warnings instead of a silent `None`
+- [x] `_unwrap_omml_boxes` also unwraps `<m:box>` that has `boxPr`
+- [x] `\bmod` becomes a spaced `mod` in flat text and `\operatorname{mod}` in prep
+- [x] table caption sits above the table, right-aligned (TD-J)
+- [x] light Markdown → DOCX (same `DocxBuilder`, CLI by `.md` suffix)
+- [x] PDF from DOCX through Microsoft Word (`--pdf` / `docx_to_pdf`)
+- [x] Markdown → PPTX, organization template (`--pptx-template`)
 
-## Открыто
+## Open
 
-_(пусто)_
+_(empty)_

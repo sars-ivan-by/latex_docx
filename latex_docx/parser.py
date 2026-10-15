@@ -96,7 +96,7 @@ class LatexParser:
 
     @staticmethod
     def _extract_authors_info(paper: Paper):
-        """Move «Сведения об авторах» section from body into paper.authors_info."""
+        """Move a Russian «Сведения об авторах» section from the body into paper.authors_info."""
         new_body: List[Block] = []
         i = 0
         while i < len(paper.body):

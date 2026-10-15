@@ -170,19 +170,19 @@ def write_docx_diff_report(
 ) -> Path:
     changes = diff_docx_paragraphs(base_docx, edited_docx)
     report_path = ensure_out_prefix(report_path) if report_path else DEFAULT_DIFF_REPORT
-    kind_ru = {"changed": "изменено", "removed": "удалено", "added": "добавлено"}
+    kind_en = {"changed": "changed", "removed": "removed", "added": "added"}
     lines = [
         f"# DOCX diff: `{Path(edited_docx).name}` vs `{Path(base_docx).name}`",
         "",
-        f"Изменений: **{len(changes)}** "
-        f"(сопоставление по содержимому, пустые абзацы игнорируются).",
+        f"Changes: **{len(changes)}** "
+        "(matched by paragraph text; empty paragraphs are ignored).",
         "",
-        "Полный автоимпорт DOCX→TeX ненадёжен (формулы OMML, таблицы, макросы).",
-        "Ниже — реальные отличия; правки переносите в `.tex` вручную.",
+        "A full DOCX→TeX import is unreliable (OMML formulas, tables, fields).",
+        "Copy the edits below back into the `.tex` or `.md` by hand.",
         "",
-        "Важно: `base` должен быть свежей конвертацией того же `.tex` "
-        "(`make convert`), а `edited` — его копия после правок в Word. "
-        "Сравнение со старым docx другого формата даст шум по авторам/формулам.",
+        "`base` should be a fresh conversion of the same source (`make convert`),",
+        "and `edited` should be that file after the Word edits.",
+        "Comparing against an older DOCX from another template adds noise.",
         "",
     ]
     for n, ch in enumerate(changes, 1):
@@ -193,20 +193,20 @@ def write_docx_diff_report(
             loc.append(f"base¶{bi}")
         if ei is not None:
             loc.append(f"edited¶{ei}")
-        lines.append(f"## {n}. {kind_ru.get(kind, kind)} ({', '.join(loc) or '—'})")
+        lines.append(f"## {n}. {kind_en.get(kind, kind)} ({', '.join(loc) or '—'})")
         lines.append("")
         if kind in ("changed", "removed"):
-            lines.append("**было:**")
+            lines.append("**before:**")
             lines.append("")
-            lines.append(ch["base"] or "_(пусто)_")
+            lines.append(ch["base"] or "_(empty)_")
             lines.append("")
         if kind in ("changed", "added"):
-            lines.append("**стало:**")
+            lines.append("**after:**")
             lines.append("")
-            lines.append(ch["edited"] or "_(пусто)_")
+            lines.append(ch["edited"] or "_(empty)_")
             lines.append("")
     if not changes:
-        lines.append("_Отличий нет._")
+        lines.append("_No differences._")
         lines.append("")
     report_path.write_text("\n".join(lines), encoding="utf-8")
     return report_path

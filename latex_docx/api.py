@@ -1,4 +1,4 @@
-"""Публичная обёртка: один вызов для .tex и .md."""
+"""Public wrapper: one call for .tex and .md."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,23 +28,22 @@ def convert(
     title_layout: Optional[str] = None,
     content_layout: Optional[str] = None,
 ) -> Path:
-    """Собрать DOCX из .tex или .md.
+    """Build a DOCX from .tex or .md.
 
-    Расширение выбирает конвертер. Для Markdown аргументы шаблона и авторов
-    не используются. Чеклист TD-J по умолчанию выключен: библиотека не пишет
-    в stdout. Верните checklist=True, если нужен тот же отчёт, что у CLI.
-    При pdf=True Word сохраняет PDF рядом с DOCX (тот же stem, суффикс .pdf).
-    При pptx=True или если output оканчивается на .pptx Markdown собирается
-    в презентацию. pptx_template — файл .pptx организации.
+    The suffix picks the converter. Markdown ignores template and author
+    arguments. The TD-J checklist stays quiet unless checklist=True.
+    pdf=True asks Microsoft Word to write a PDF next to the DOCX.
+    pptx=True, or an output path ending in .pptx, builds a presentation
+    from Markdown. pptx_template is an organization .pptx file.
     """
     path = Path(source)
     suffix = path.suffix.lower()
     wants_pptx = pptx or (output is not None and Path(output).suffix.lower() == ".pptx")
     if wants_pptx and pdf:
-        raise ValueError("PDF и PPTX одним вызовом не собираются")
+        raise ValueError("PDF and PPTX cannot be built in one call")
     if wants_pptx:
         if suffix not in _MARKDOWN:
-            raise ValueError("PPTX собирается из Markdown (.md)")
+            raise ValueError("PPTX is built from Markdown (.md)")
         return markdown_to_pptx(
             path,
             output,
@@ -65,7 +64,7 @@ def convert(
         )
     else:
         raise ValueError(
-            f"Неизвестное расширение {suffix!r}: ожидается .tex, .latex, .md или .markdown"
+            f"Unknown extension {suffix!r}: expected .tex, .latex, .md, or .markdown"
         )
     if pdf:
         docx_to_pdf(out)
@@ -77,5 +76,5 @@ def diff(
     edited: PathLike,
     output: Optional[PathLike] = None,
 ) -> Path:
-    """Сравнить два DOCX и записать markdown-отчёт."""
+    """Compare two DOCX files and write a Markdown report."""
     return write_docx_diff_report(base, edited, output)

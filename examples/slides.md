@@ -1,18 +1,18 @@
-# Название доклада
-Подзаголовок
+# Talk title
+Subtitle
 
 ---
 
-## Первый слайд
+## First slide
 
-- тезис
-- ещё тезис
+- a point
+- another point
 
 ???
-Заметка докладчика.
+Speaker note.
 
 ---
 
-## Картинка
+## Figure
 
-![схема](fig.png)
+![scheme](fig.png)
