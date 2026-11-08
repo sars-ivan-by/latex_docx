@@ -52,6 +52,7 @@ latex-docx = "latex_docx.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/sars-ivan-by/latex_docx"
+Author = "https://ibiozet.ru/en"
 Documentation = "https://sars-ivan-by.github.io/latex_docx/"
 Repository = "https://github.com/sars-ivan-by/latex_docx"
 Issues = "https://github.com/sars-ivan-by/latex_docx/issues"

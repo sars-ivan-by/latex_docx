@@ -6,9 +6,9 @@ An agent controls the result from the source and a few flags: which template, wh
 
 A scientific article is one option (`--template article`, or `--template tdj` for a bilingual journal header). The default is an ordinary note.
 
-- Agent instructions: [`SKILLS.md`](SKILLS.md)
+- Agent instructions: [`SKILLS.md`](https://github.com/sars-ivan-by/latex_docx/blob/main/SKILLS.md)
 - Documentation: [English](https://sars-ivan-by.github.io/latex_docx/en/) · [Русский](https://sars-ivan-by.github.io/latex_docx/ru/) · [中文](https://sars-ivan-by.github.io/latex_docx/zh/)
-- Roadmap: [`ROADMAP.md`](ROADMAP.md)
+- Roadmap: [English](https://sars-ivan-by.github.io/latex_docx/en/roadmap.html) · [Русский](https://sars-ivan-by.github.io/latex_docx/ru/roadmap.html) · [中文](https://sars-ivan-by.github.io/latex_docx/zh/roadmap.html)
 
 ## Install
 
@@ -61,7 +61,7 @@ latex-docx notes.md -o out_notes.docx --pdf
 latex-docx --diff-docx out_base.docx out_edited.docx -o out_changes.md
 ```
 
-`python -m latex_docx` is the same program. A file name without the `out_` prefix receives one (see `.gitignore`). Copy [`examples/wrap.py`](examples/wrap.py) into another project and call `convert()`.
+`python -m latex_docx` is the same program. A file name without the `out_` prefix receives one (see `.gitignore`). Copy [`examples/wrap.py`](https://github.com/sars-ivan-by/latex_docx/blob/main/examples/wrap.py) into another project and call `convert()`.
 
 ```python
 from latex_docx import convert, markdown_to_pptx
@@ -84,7 +84,7 @@ convert("slides.md", "out_slides.pptx")
 | One slide's layout | `::layout Exact Name` after `latex-docx --pptx-layouts` |
 | Look, when there is no deck file | `::font`, `::color RRGGBB`, `::background RRGGBB`, `::size widescreen` |
 
-With an organization `.pptx`, those four `::` lines are ignored. The file already has the look. Full rules for agents: [`SKILLS.md`](SKILLS.md).
+With an organization `.pptx`, those four `::` lines are ignored. The file already has the look. Full rules for agents: [`SKILLS.md`](https://github.com/sars-ivan-by/latex_docx/blob/main/SKILLS.md).
 
 ## Templates
 
@@ -104,7 +104,7 @@ With an organization `.pptx`, those four `::` lines are ignored. The file alread
 
 Markdown DOCX: the first `#` is the title unless YAML `title:` is set. Headings, bold, italic, code, links, nested lists, task items, footnotes (`[^id]` and `[^id]: text`), GFM tables, images, fenced code, quotes, and `$...$` / `$$...$$` are accepted.
 
-Slides: `---` starts the next slide, `#` is the title slide, `##` is content, `-` is a bullet, `???` is speaker notes. See [`examples/slides.md`](examples/slides.md).
+Slides: `---` starts the next slide, `#` is the title slide, `##` is content, `-` is a bullet, `???` is speaker notes. See [`examples/slides.md`](https://github.com/sars-ivan-by/latex_docx/blob/main/examples/slides.md).
 
 ```bash
 latex-docx --pptx-layouts
@@ -126,10 +126,14 @@ The checklist runs for `tdj` on the command line. In `convert()` it stays quiet 
 
 ## Limits
 
-LaTeX covers a typical article: `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography`, and a sibling `.bbl`. Do not import a DOCX back into the source. Use `--diff-docx` and edit the Markdown or TeX. Known limits: [`troubles.md`](troubles.md). What comes next: [`ROADMAP.md`](ROADMAP.md).
+LaTeX covers a typical article: `equation` / `align`, `figure` / `subfigure`, `tabular` / `tabularx` / `longtable`, `thebibliography`, and a sibling `.bbl`. Do not import a DOCX back into the source. Use `--diff-docx` and edit the Markdown or TeX. Known limits: [`troubles.md`](https://github.com/sars-ivan-by/latex_docx/blob/main/troubles.md). What comes next: [roadmap](https://sars-ivan-by.github.io/latex_docx/en/roadmap.html).
 
 PyPI package name: `latex-docx`. A GitHub Release publishes through trusted publishing (`.github/workflows/pypi.yml`, environment `pypi`). Pages are the static files in `docs/`.
 
+## About the author
+
+[Ivan Sukach](https://ibiozet.ru/en)
+
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](https://github.com/sars-ivan-by/latex_docx/blob/main/LICENSE).
